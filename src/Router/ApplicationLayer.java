@@ -34,6 +34,7 @@ import javax.swing.SwingConstants;
  *  201302477 전철민
  *  201402343 남진우
  *  201402450 현도훈
+ *  201402406 이진원
  */
 
 public class ApplicationLayer extends JFrame {
