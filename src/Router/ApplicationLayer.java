@@ -33,6 +33,7 @@ import javax.swing.SwingConstants;
  *  201402420 전형진
  */
 
+//201402343 남진우
 public class ApplicationLayer extends JFrame {
 	/* GUI 구성 
 	 * ip, mac 주소 입력
