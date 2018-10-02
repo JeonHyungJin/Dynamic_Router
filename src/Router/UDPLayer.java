@@ -12,6 +12,7 @@ public class UDPLayer extends BaseLayer {
 	byte[] udp_sourcePort = new byte[2];
 	byte[] udp_destinationPort = new byte[2];
 	byte[] udp_checksum = new byte[2];	//checksum에서 이거 사용 해야될듯
+	byte[] udp_length = new byte[2];
 	byte[] udp_data;
 
 	public UDPLayer(String layerName) {
@@ -56,6 +57,17 @@ public class UDPLayer extends BaseLayer {
 	}
 
 	// length & checksum 나중쓰
+	void setLength(byte[] data){
+		if((byte)(data.length+8) < (byte) 0xFFFF){
+			udp_length[0] = (byte) 0x00;
+			udp_length[1] =(byte)(data.length + 8);
+		}
+		else{
+			//계산안되서 수욜에합시다 ^^
+		}
+
+
+	}
 
 	boolean receiveUDP(byte[] data) {
 		if (checkChecksum(data)) {
@@ -118,6 +130,9 @@ public class UDPLayer extends BaseLayer {
 		udp_data[3] = udp_destinationPort[1];
 
 		//length를 설정 해야할까요..? ㅎㅎ
+		setLength(data);
+		udp_data[4] = udp_length[0];
+		udp_data[5] = udp_length[1];
 
 		/*checksum을 udp_data header에 추가한다*/
 		setChecksum(makeChecksum(data));
