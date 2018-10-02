@@ -78,7 +78,7 @@ public class UDPLayer extends BaseLayer {
 			}
 		} else {
 			// checksum 오류 맨~
-			return false;
+			return false; //오류면 버린다(?)
 		}
 		return true;
 	}
@@ -93,6 +93,7 @@ public class UDPLayer extends BaseLayer {
 		byte[] dst_checksum = new byte[2]; //오리지널과
 		dst_checksum[0] = data[6];
 		dst_checksum[1] = data[7];
+		//받은 패킷에 대한 체크썸.
 		// now check the checksum;
 		if (checkingChecksum[0] == dst_checksum[0] && checkingChecksum[1] == dst_checksum[1]) { //비교한다
 			return true;
@@ -108,16 +109,21 @@ public class UDPLayer extends BaseLayer {
 
 		// encapsulation
 		setDestinationPort(destinationPort);	//이렇게 하면 DestinationPort가 정해지고 실제 보내지는 data부분에 붙는건 아니지 않나?
+		/*
+		udp_data header에 입력 해줘야 할 것 같습니다!!!
+		sourcePort 설정은 고민~*/
+
+		/*checksum을 udp_data header에 추가한다*/
+		setChecksum(makeChecksum(data));
+		udp_data[6] = udp_checksum[0];
+		udp_data[7] = udp_checksum[1];
+
+
 
 		for (int i = 0; i < length; i++)
 			udp_data[i + UDP_HEAD_SIZE] = data[i];
 
-		// sourcePort 설정은 고민~
-		setChecksum(makeChecksum(data));
 
-		udp_data[6] = udp_checksum[0];
-		udp_data[7] = udp_checksum[1];
-		/*udp_data header에 추가한다*/
 		if (((IPLayer) this.getUnderLayer()).sendUDP(udp_data)) {
 			return true;
 		} else
