@@ -51,13 +51,8 @@ public class UDPLayer extends BaseLayer {
 	}
 
 	void setChecksum(byte[] checksum) { //checksum 헤더에 넣어요
-		//Line 14에 선언된 변수를 이용하도록 변경 요청
 		udp_checksum[0] = checksum[0];
 		udp_checksum[1] = checksum[1];
-
-		//오리지널
-		//udp_data[6] = checksum[0];
-		//udp_data[7] = checksum[1];
 	}
 
 	// length & checksum 나중쓰
@@ -105,13 +100,24 @@ public class UDPLayer extends BaseLayer {
 	boolean sendUDP(byte[] data) {
 		int length = data.length;
 		byte[] destinationPort = { (byte) 0x02, 0x08 };
+		byte[] sourcePort = { (byte) 0x02, 0x08 }; //임의로 넣어 놓은 것.
 		udp_data = new byte[data.length + UDP_HEAD_SIZE];
 
 		// encapsulation
-		setDestinationPort(destinationPort);	//이렇게 하면 DestinationPort가 정해지고 실제 보내지는 data부분에 붙는건 아니지 않나?
-		/*
-		udp_data header에 입력 해줘야 할 것 같습니다!!!
-		sourcePort 설정은 고민~*/
+
+		//UDP header 설정
+
+		//udp source port 설정, 더 고민해봐야함.
+		setSourcePort(sourcePort);
+		udp_data[0] = udp_sourcePort[0];
+		udp_data[1] = udp_sourcePort[1];
+
+		//udp destination port 설정
+		setDestinationPort(destinationPort);
+		udp_data[2] = udp_destinationPort[0];
+		udp_data[3] = udp_destinationPort[1];
+
+		//length를 설정 해야할까요..? ㅎㅎ
 
 		/*checksum을 udp_data header에 추가한다*/
 		setChecksum(makeChecksum(data));
@@ -119,7 +125,7 @@ public class UDPLayer extends BaseLayer {
 		udp_data[7] = udp_checksum[1];
 
 
-
+		//데이터 설정
 		for (int i = 0; i < length; i++)
 			udp_data[i + UDP_HEAD_SIZE] = data[i];
 
