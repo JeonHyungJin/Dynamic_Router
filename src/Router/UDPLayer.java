@@ -11,13 +11,17 @@ public class UDPLayer extends BaseLayer {
 	byte[] udp_head = new byte[UDP_HEAD_SIZE];
 	byte[] udp_sourcePort = new byte[2];
 	byte[] udp_destinationPort = new byte[2];
-	byte[] udp_checksum = new byte[2];
+	byte[] udp_checksum = new byte[2];	//checksum에서 이거 사용 해야될듯
 	byte[] udp_data;
 
 	public UDPLayer(String layerName) {
 		super(layerName);
 	}
 
+	/**
+	 *
+	 * @param sourcePort
+	 * */
 	void setSourcePort(byte[] sourcePort) {
 		for (int i = 0; i < 2; i++)
 			udp_sourcePort[i] = sourcePort[i];
@@ -47,6 +51,7 @@ public class UDPLayer extends BaseLayer {
 	}
 
 	void setChecksum(byte[] checksum) { //checksum 헤더에 넣어요
+		//Line 14에 선언된 변수를 이용하도록 변경 요청
 		udp_data[6] = checksum[0];
 		udp_data[7] = checksum[1];
 	}
@@ -98,7 +103,7 @@ public class UDPLayer extends BaseLayer {
 		udp_data = new byte[data.length + UDP_HEAD_SIZE];
 
 		// encapsulation
-		setDestinationPort(destinationPort);
+		setDestinationPort(destinationPort);	//이렇게 하면 DestinationPort가 정해지고 실제 보내지는 data부분에 붙는건 아니지 않나?
 
 		for (int i = 0; i < length; i++)
 			udp_data[i + UDP_HEAD_SIZE] = data[i];
