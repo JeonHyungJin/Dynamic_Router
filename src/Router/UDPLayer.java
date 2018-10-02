@@ -57,12 +57,13 @@ public class UDPLayer extends BaseLayer {
 
     // length & checksum 나중쓰
     void setLength(byte[] data) {
-        if ((byte) (data.length + 8) < (byte) 0xFFFF) {
+        if ((data.length + 8) < 255) { //이거 ㄹㅇ 개 애매 ㅇㅈ?
             udp_length[0] = (byte) 0x00;
-            udp_length[1] = (byte) (data.length + 8);
-        } else {
-            udp_length[0] = (byte) (((byte) (data.length + 8)) / (byte) 0xFFFF);
-            udp_length[1] = (byte) (((byte) (data.length + 8)) % (byte) 0xFFFF);
+            udp_length[1] = (byte) ((data.length + 8) & 0xFF);
+            //udp_length 출력해보면 10진수로 출력되는데 이게 과연 맞는 것 인가?
+        } else {    //여기도 애매 ㅇㅈ?
+            udp_length[0] = (byte) (((data.length + 8)) / 0xFF);
+            udp_length[1] = (byte) (((data.length + 8)) % 0xFF);
         }
 
     }
