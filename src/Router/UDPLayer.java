@@ -52,8 +52,12 @@ public class UDPLayer extends BaseLayer {
 
 	void setChecksum(byte[] checksum) { //checksum 헤더에 넣어요
 		//Line 14에 선언된 변수를 이용하도록 변경 요청
-		udp_data[6] = checksum[0];
-		udp_data[7] = checksum[1];
+		udp_checksum[0] = checksum[0];
+		udp_checksum[1] = checksum[1];
+
+		//오리지널
+		//udp_data[6] = checksum[0];
+		//udp_data[7] = checksum[1];
 	}
 
 	// length & checksum 나중쓰
@@ -110,6 +114,10 @@ public class UDPLayer extends BaseLayer {
 
 		// sourcePort 설정은 고민~
 		setChecksum(makeChecksum(data));
+
+		udp_data[6] = udp_checksum[0];
+		udp_data[7] = udp_checksum[1];
+		/*udp_data header에 추가한다*/
 		if (((IPLayer) this.getUnderLayer()).sendUDP(udp_data)) {
 			return true;
 		} else
