@@ -11,6 +11,7 @@ public class UDPLayer extends BaseLayer {
 	byte[] udp_head = new byte[UDP_HEAD_SIZE];
 	byte[] udp_sourcePort = new byte[2];
 	byte[] udp_destinationPort = new byte[2];
+    byte[] udp_length = new byte[2];
 	byte[] udp_checksum = new byte[2];	//checksum에서 이거 사용 해야될듯
 	byte[] udp_data;
 
@@ -31,6 +32,11 @@ public class UDPLayer extends BaseLayer {
 		for (int i = 0; i < 2; i++)
 			udp_destinationPort[i] = destinationPort[i];
 	}
+
+	void setLength(byte[] length){
+	    for(int i=0;i<2;i++)
+	        udp_length[i] = length[i];
+    }
 
 	public byte[] makeChecksum(byte[] data) { // SHA-512 암호화
 
