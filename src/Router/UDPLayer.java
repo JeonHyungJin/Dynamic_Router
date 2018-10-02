@@ -40,14 +40,14 @@ public class UDPLayer extends BaseLayer {
 			digest = MessageDigest.getInstance("SHA-512");
 			digest.reset();
 			digest.update(data);
-			byte[] hiddenData = digest.digest();// amhohwa
+			byte[] hiddenData = digest.digest();// 암호화 시킴
 			checksum = Arrays.copyOfRange(hiddenData, 0, 2);
 		} catch (NoSuchAlgorithmException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
 		}
 
-		return checksum;
+		return checksum; //checksum 리턴
 	}
 
 	void setChecksum(byte[] checksum) { //checksum 헤더에 넣어요
