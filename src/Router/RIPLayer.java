@@ -51,7 +51,7 @@ public class RIPLayer extends BaseLayer {
         } else if (dataRIP[0] == 0x02) {
             // response
             // 2. response에 대한 response - 반대
-            byte[] broadcast = {(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff};
+            byte[] broadcast = {(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff}; //전역변수로 설정하지 않고 여기 안에 설정한 이유는 뭔가요? 초기단계에서도 써야할거라 생각됩니다.
             // 255.255.255.255로 설정
             IPLayer ipLayer = (IPLayer) otherUDPLayer.getUnderLayer();
             ipLayer.setDestinationIPAddress(broadcast);
@@ -89,6 +89,9 @@ public class RIPLayer extends BaseLayer {
         // initialization
         // broadcast로 송신
         // header 설정
+        // 처음 연결 됐을 때는 그냥 브로드캐스트로 송신만 하면 되는건지 아니면 보내고
+        // 그에대한 응답을 또 기다려야 하는지?
+
         this.rip_message = new byte[4];
         this.rip_message[0] = 0x01;
         this.rip_message[1] = 0x02;
