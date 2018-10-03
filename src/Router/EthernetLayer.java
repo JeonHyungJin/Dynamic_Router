@@ -168,8 +168,7 @@ public class EthernetLayer extends BaseLayer {
          return false;
       
       // 수신할 frame을 decapsulation하여 상위 레이어로 전달
-      byte[] dataFrame = new byte[data.length - ETHERNET_HEAD_SIZE];
-      dataFrame = Arrays.copyOfRange(data, ETHERNET_HEAD_SIZE, data.length);
+      byte[] dataFrame = Arrays.copyOfRange(data, ETHERNET_HEAD_SIZE, data.length);
       // Ethernet frame type을 확인하여, 알맞은 레이어로 전달
       if (data[12] == 8 && data[13] == 0)	// IP : 0x0800
          ((IPLayer) this.getUpperLayer()).receiveIP(dataFrame);
