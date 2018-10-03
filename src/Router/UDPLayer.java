@@ -68,7 +68,7 @@ public class UDPLayer extends BaseLayer {
 
     }
 
-    boolean receiveUDP(byte[] data) {
+    boolean receiveUDP(byte[] data, byte[] gateway) {
         if (checkChecksum(data)) {
             byte[] dst_port = new byte[2];
             // byte-order 고민한번쯤은~
@@ -80,10 +80,11 @@ public class UDPLayer extends BaseLayer {
                 byte[] dataRIP = new byte[data.length - UDP_HEAD_SIZE];
                 System.arraycopy(data, 8, dataRIP, 0, dataRIP.length);
 
-                ((RIPLayer) this.getUpperLayer()).receiveRIP(dataRIP);
+                ((RIPLayer) this.getUpperLayer()).receiveRIP(dataRIP, gateway);
             }
         } else {
             // checksum 오류 맨~
+
             return false; //오류면 버린다(?)
         }
         return true;
@@ -108,7 +109,7 @@ public class UDPLayer extends BaseLayer {
         }
     }
 
-    boolean sendUDP(byte[] data) {
+    boolean sendRIP(byte[] data) {
         int length = data.length;
         byte[] destinationPort = {(byte) 0x02, 0x08};
         byte[] sourcePort = {(byte) 0x02, 0x08}; //임의로 넣어 놓은 것.

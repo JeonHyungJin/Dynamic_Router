@@ -4,7 +4,7 @@ package Router;
  * Routing table
  * 
  * 라우터가 갖는 Routing table
- * 
+ * Metric 변경 되는 작업 필요
  * */
 public class RoutingTable {
 	/*Routing table에 사용 되는 상수 설정*/
