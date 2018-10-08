@@ -33,21 +33,33 @@ public class UDPLayer extends BaseLayer {
     }
 
     public byte[] makeChecksum(byte[] data) { // SHA-512 암호화
+        byte[] checksumFirst = new byte[1]; //굳이 배열안써도 될듯.
+        byte[] checksumSecond = new byte[1];
+        byte[] checksum = new byte[2];
 
-        MessageDigest digest;
-        byte[] checksum = null;
-        try {
-            digest = MessageDigest.getInstance("SHA-512");
-            digest.reset();
-            digest.update(data);
-            byte[] hiddenData = digest.digest();// 암호화 시킴
-            checksum = Arrays.copyOfRange(hiddenData, 0, 2);
-        } catch (NoSuchAlgorithmException e) {
-            // TODO Auto-generated catch block
-            e.printStackTrace();
+        for(int i = 0; i< data.length; i = i+2){
+            checksumFirst[0] += (byte) data[i]; //홀수 인덱스끼리 더한다.
+            checksumSecond[0] += (byte) data[i+1]; //짝수 인덱스끼리 더한다.
         }
+        checksum[0] = (byte)(~checksumFirst[0]); //보수를 취한다.
+        checksum[1] = (byte)(~checksumSecond[0]);
 
-        return checksum; //checksum 리턴
+        return checksum; //체크섬 반환
+
+//        MessageDigest digest;
+//        byte[] checksum = null;
+//        try {
+//            digest = MessageDigest.getInstance("SHA-512");
+//            digest.reset();
+//            digest.update(data);
+//            byte[] hiddenData = digest.digest();// 암호화 시킴
+//            checksum = Arrays.copyOfRange(hiddenData, 0, 2);
+//        } catch (NoSuchAlgorithmException e) {
+//            // TODO Auto-generated catch block
+//            e.printStackTrace();
+//        }
+//
+//        return checksum; //checksum 리턴
     }
 
     void setChecksum(byte[] checksum) { //checksum 헤더에 넣어요
