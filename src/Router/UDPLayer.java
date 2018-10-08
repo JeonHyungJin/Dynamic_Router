@@ -81,6 +81,7 @@ public class UDPLayer extends BaseLayer {
     }
 
     boolean receiveUDP(byte[] data, byte[] gateway) {
+        System.out.println("여길 온다고?!");
         if (checkChecksum(data)) {
             byte[] dst_port = new byte[2];
             // byte-order 고민한번쯤은~

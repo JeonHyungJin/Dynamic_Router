@@ -60,8 +60,14 @@ public class ARPLayer extends BaseLayer {
 
 	void setARPCacheTable(byte[] IP_Address, byte[] Ether_Address, byte state) {
 		int index = findARPCacheTable(IP_Address);
-		if (Arrays.equals(IP_Address, ARP_senderIPAddr))
+		if (Arrays.equals(IP_Address, ARP_senderIPAddr)) {
+			//test
+			System.arraycopy(IP_Address, 0, ARPCacheTable[ARPCacheTableCount], 0, 4);
+			System.arraycopy(Ether_Address, 0, ARPCacheTable[ARPCacheTableCount], 4, 6);
+			ARPCacheTable[ARPCacheTableCount][10] = state;
+			ARPCacheTableCount++;
 			return;
+		}
 		if (index == -1) {
 			System.arraycopy(IP_Address, 0, ARPCacheTable[ARPCacheTableCount], 0, 4);
 			System.arraycopy(Ether_Address, 0, ARPCacheTable[ARPCacheTableCount], 4, 6);
@@ -84,6 +90,7 @@ public class ARPLayer extends BaseLayer {
 		byte[] temp = new byte[4];
 		for (int i = 0; i < ARPCacheTableCount; i++) {
 			System.arraycopy(ARPCacheTable[i], 0, temp, 0, 4);
+			System.out.printf("%d.%d.%d.%d\n",temp[0],temp[1],temp[2],temp[3]);
 			if (java.util.Arrays.equals(IP_Address, temp)) {
 				return i;
 			}
@@ -167,19 +174,21 @@ public class ARPLayer extends BaseLayer {
 			return false;
 		}
 	}
-	// ip 패킷 전송 시 호출
+	// ip 패킷 전송 시 호출, dest_ip_address에는 목적지가 담겨 있음, gateway or host
 	boolean send(byte[] send_ip_data, byte[] dest_ip_address) {
 		byte[] send_arp_data = new byte[send_ip_data.length + ARP_MAX_SIZE];
 
 		if ((findARPCacheTable(dest_ip_address) == -1)) {
-			
+
 			// 대상의 arp 정보 없는 경우 arp request 하고, reply 올 때 까지 패킷 전송 유보
 			ARP_request_send(dest_ip_address);
 
 			while (true) {
 				try {
 					Thread.sleep(100);
+					System.out.println("ing...");
 					if (findARPCacheTable(dest_ip_address) != -1 && ARPCacheTable[findARPCacheTable(dest_ip_address)][10] != 0) {
+						System.out.println("arp 찾기 끝");
 						byte[] dest_mac_address = new byte[6];
 
 						dest_mac_address[0] = getARPCacheTable(dest_ip_address)[4];
@@ -232,6 +241,7 @@ public class ARPLayer extends BaseLayer {
 		System.arraycopy(ARP_targetEthAddr, 0, send_arp_data, 18, 6);
 		System.arraycopy(dest_ip_address, 0, send_arp_data, 24, 4);
 
+		System.out.printf("%d.%d.%d.%d\n", dest_ip_address[0], dest_ip_address[1], dest_ip_address[2],dest_ip_address[3]);
 		if (findARPCacheTable(dest_ip_address) == -1)
 			setARPCacheTable(dest_ip_address, temp, (byte) 0);
 		
@@ -239,6 +249,8 @@ public class ARPLayer extends BaseLayer {
 	}
 
 	boolean ARP_reply_send(byte[] data) {
+		// 자기한테 온거면 request 인지 reply인지 생각않고 여기로 떨어진다.
+
 		byte[] receive_sender_Ethernet = new byte[6];
 		byte[] receive_sender_IP = new byte[4];
 		byte[] receive_target_IP = new byte[4];
