@@ -139,12 +139,15 @@ public class ApplicationLayer extends JFrame {
       /* routing table 공간 할당 */
 	  routingTable = new RoutingTable[20];
       routingIndex = 0;
-      
+
       /* 각 Interface별 routing 정보 저장을 위해 routing table 연결 */
       m_IPLayer_1.setRoutingTable(routingTable);
       m_IPLayer_2.setRoutingTable(routingTable);
-      
-      /* Routing 후 알맞은 interface에게 보내기 위해 서로 다른 IPLayer를 각각 연결 */
+       m_IPLayer_1.setRoutingIndex(routingIndex);
+       m_IPLayer_2.setRoutingIndex(routingIndex);
+
+
+       /* Routing 후 알맞은 interface에게 보내기 위해 서로 다른 IPLayer를 각각 연결 */
       m_IPLayer_1.setOtherIPLayer(m_IPLayer_2);
       m_IPLayer_2.setOtherIPLayer(m_IPLayer_1);
 
@@ -535,7 +538,9 @@ public class ApplicationLayer extends JFrame {
 	             
 	            routingTable[routingIndex].setRoutingTable(tempDestination, tempNetmask, tempGateway, flag, 
 	                   Integer.parseInt(interface_box.getText()), routingIndex);
-	            for (int j = 0; j < routingIndex; j++) {
+	            // 무슨 용도인지 모르겠다.
+                // 클래스에 따라서 정렬하려하는 거 같은데, 굳이 안해줘도 될듯해서 주석쓰
+	            /*for (int j = 0; j < routingIndex; j++) {
 	                  if (routingTable[j].getClassNumber() < routingTable[routingIndex].getClassNumber()) {
 	                     RoutingTable temp = routingTable[routingIndex];
 	                     for (int k = routingIndex; k < j; k--) {
@@ -543,12 +548,15 @@ public class ApplicationLayer extends JFrame {
 	                     }
 	                     routingTable[j] = temp;
 	                  }
-	               }
+	               }*/
 	            StaticRoutingList.addItem(byte2IP(tempDestination) + "  " 
 	             + byte2IP(tempNetmask) + "  " + byte2IP(tempGateway)
 	             + "  " + flag + "  " + interface_box.getText() + "  " + routingTable[routingIndex].getMetric());
 	            routingIndex++;
-			}
+                m_IPLayer_1.setRoutingIndex(routingIndex);
+                m_IPLayer_2.setRoutingIndex(routingIndex);
+
+            }
          } else if (e.getSource() == StaticRoutingDelete_btn) { // static router table 삭제 버튼 클릭시
         	if(routingIndex > 0){
 	        	StaticRoutingList.remove(routingIndex - 1);
