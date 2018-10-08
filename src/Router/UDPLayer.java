@@ -32,7 +32,7 @@ public class UDPLayer extends BaseLayer {
             udp_destinationPort[i] = destinationPort[i];
     }
 
-    public byte[] makeChecksum(byte[] data) { // SHA-512 암호화
+    public byte[] makeChecksum(byte[] data) {
         byte[] checksumFirst = new byte[1]; //굳이 배열안써도 될듯.
         byte[] checksumSecond = new byte[1];
         byte[] checksum = new byte[2];
@@ -45,7 +45,7 @@ public class UDPLayer extends BaseLayer {
         checksum[1] = (byte)(~checksumSecond[0]);
 
         return checksum; //체크섬 반환
-
+//        SHA-512암호화
 //        MessageDigest digest;
 //        byte[] checksum = null;
 //        try {
@@ -107,7 +107,8 @@ public class UDPLayer extends BaseLayer {
         byte[] noheaderData = new byte[data.length - UDP_HEAD_SIZE];
         System.arraycopy(data, 8, noheaderData, 0, noheaderData.length); //짤라서
         byte[] checkingChecksum = new byte[2];
-        checkingChecksum = makeChecksum(noheaderData); //암호화시키고
+        checkingChecksum[0] = makeChecksum(noheaderData)[0];
+        checkingChecksum[1] = makeChecksum(noheaderData)[1];
 
         byte[] dst_checksum = new byte[2]; //오리지널과
         dst_checksum[0] = data[6];
