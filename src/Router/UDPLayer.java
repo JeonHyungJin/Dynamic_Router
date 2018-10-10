@@ -33,6 +33,12 @@ public class UDPLayer extends BaseLayer {
     }
 
     public byte[] makeChecksum(byte[] data) {
+        //지금은 데이터 관련해서 덧셈을 하여 체크섬을 만들었는데.
+        //피디에프 확인 결과 가상 헤더에 관해서 IPAddress의 관련 바이트를 또한 더해야한다.
+        //하지만 정확한 이해가 되지않아 주석만 달아 올립니다.
+
+
+
         byte[] checksumFirst = new byte[1]; //굳이 배열안써도 될듯.
         byte[] checksumSecond = new byte[1];
         byte[] checksum = new byte[2];
