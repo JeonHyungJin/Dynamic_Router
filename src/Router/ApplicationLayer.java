@@ -537,7 +537,7 @@ public class ApplicationLayer extends JFrame {
 	            }
 	             
 	            routingTable[routingIndex].setRoutingTable(tempDestination, tempNetmask, tempGateway, flag, 
-	                   Integer.parseInt(interface_box.getText()), routingIndex);
+	                   Integer.parseInt(interface_box.getText()), routingIndex, 1);
 	            // 무슨 용도인지 모르겠다.
                 // 클래스에 따라서 정렬하려하는 거 같은데, 굳이 안해줘도 될듯해서 주석쓰
 	            /*for (int j = 0; j < routingIndex; j++) {

@@ -90,7 +90,6 @@ public class ARPLayer extends BaseLayer {
 		byte[] temp = new byte[4];
 		for (int i = 0; i < ARPCacheTableCount; i++) {
 			System.arraycopy(ARPCacheTable[i], 0, temp, 0, 4);
-			System.out.printf("%d.%d.%d.%d\n",temp[0],temp[1],temp[2],temp[3]);
 			if (java.util.Arrays.equals(IP_Address, temp)) {
 				return i;
 			}
@@ -182,8 +181,8 @@ public class ARPLayer extends BaseLayer {
 
 			// 대상의 arp 정보 없는 경우 arp request 하고, reply 올 때 까지 패킷 전송 유보
 			ARP_request_send(dest_ip_address);
-
-			while (true) {
+			int count = 0 ;
+			while (count < 20) {
 				try {
 					Thread.sleep(100);
 					System.out.println("ing...");
@@ -204,6 +203,7 @@ public class ARPLayer extends BaseLayer {
 					// TODO Auto-generated catch block
 					e.printStackTrace();
 				}
+				count++;
 			}
 		} else {
 			// arp table에 정보 있는 경우 해당 정보로 전송
@@ -218,6 +218,8 @@ public class ARPLayer extends BaseLayer {
 
 			return ((EthernetLayer) this.getUnderLayer()).sendIP(send_ip_data, dest_mac_address);
 		}
+		return true;
+
 	}
 
 	// IP 패킷 수신 한 경우 수신자 정보 없을 시 arp_request_send 호출
