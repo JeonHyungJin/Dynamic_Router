@@ -1,5 +1,8 @@
 package Router;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 public class RIPLayer extends BaseLayer {
     // RIP header
     // Version은 2만 사용한다고 가정
@@ -279,6 +282,15 @@ public class RIPLayer extends BaseLayer {
     }
 
     public void sendRIP(){
+        Timer timer = new Timer();
+        TimerTask timerTask = new TimerTask() {
+            @Override
+            public void run() {
+                //주기적으로 실행되는 부분
+            }
+        };
+        timer.schedule(timerTask,0,30000);  //sendRIP함수가 호출되면 0초후부터 run()함수 부분이 30초 마다 실행된다.
+
         //router 들에게만
         // hum...
         // timer 별로 송신
