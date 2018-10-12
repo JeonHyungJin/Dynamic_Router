@@ -20,6 +20,7 @@ public class RoutingTable {
    private int RT_interface;
    private int RT_metric;
    private int RT_class;
+   private int RT_time;
 
    public RoutingTable() {
       RT_des_IP = new byte[RT_DES_SIZE];
@@ -31,8 +32,40 @@ public class RoutingTable {
       RT_Index = 0;
    }
 
+   public void setRT_Index(int RT_Index) {
+      this.RT_Index = RT_Index;
+   }
+
+   public void setRT_des_IP(byte[] RT_des_IP) {
+      this.RT_des_IP = RT_des_IP;
+   }
+
+   public void setRT_netmask_IP(byte[] RT_netmask_IP) {
+      this.RT_netmask_IP = RT_netmask_IP;
+   }
+
+   public void setRT_gateway_IP(byte[] RT_gateway_IP) {
+      this.RT_gateway_IP = RT_gateway_IP;
+   }
+
+   public void setRT_flag(Flag RT_flag) {
+      this.RT_flag = RT_flag;
+   }
+
+   public void setRT_interface(int RT_interface) {
+      this.RT_interface = RT_interface;
+   }
+
+   public void setRT_metric(int RT_metric) {
+      this.RT_metric = RT_metric;
+   }
+
+   public void setRT_class(int RT_class) {
+      this.RT_class = RT_class;
+   }
+
    public void setRoutingTable(byte[] desIP, byte[] netmaskIP, byte[] gatewayIP, Flag flag, int interfaceNumber,
-         int index) {
+                               int index, int metric) {
       int netmaskCheck = 0;
       System.arraycopy(desIP, 0, RT_des_IP, 0, 4);
       System.arraycopy(netmaskIP, 0, RT_netmask_IP, 0, 4);
@@ -40,6 +73,7 @@ public class RoutingTable {
       RT_flag = flag;
       RT_interface = interfaceNumber;
       RT_Index = index;
+
 
       netmaskCheck = this.netmaskCheckClass(netmaskIP);
       
@@ -53,11 +87,12 @@ public class RoutingTable {
          RT_class = 0;
       }
 
-      if (desIP[netmaskCheck] == gatewayIP[netmaskCheck] || netmaskCheck == 0) {
+      /*if (desIP[netmaskCheck] == gatewayIP[netmaskCheck] || netmaskCheck == 0) {
          RT_metric = 0x01;
       } else {
          RT_metric = 0x02;
-      }
+      }*/
+      this.RT_metric = metric;
    }
 
    public byte[] getDestination() {

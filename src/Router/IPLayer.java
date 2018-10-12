@@ -2,8 +2,6 @@ package Router;
 
 import java.util.Arrays;
 
-import static Router.EthernetLayer.ETHERNET_HEAD_SIZE;
-
 public class IPLayer extends BaseLayer {
 	final static int IP_HEAD_SIZE = 20;
 
@@ -45,12 +43,45 @@ public class IPLayer extends BaseLayer {
 			ip_destinationIP[i] = destinationAddress[i];
 	} //여기까지는 set해주는 부분들.
 
-	boolean sendUDP(byte[] data) {
+	boolean sendUDP(byte[] data, byte[] destinationAddress) {
 		// UDP에서 내려오는 RIP response request 등
 		int length = data.length;
-		byte[] broadcast = {(byte) 0xff,(byte) 0xff,(byte)  0xff,(byte) 0xff};
 
 		ip_data = new byte[data.length + IP_HEAD_SIZE];
+		// ip checksum도 필요
+		// encapsulation
+		// version & IHL
+		ip_data[0] = 0x45;
+		// TOS
+		ip_data[1] = 0x00;
+		// Total Packet Length ( 16 bit )
+		ip_data[2] = (byte) ip_data.length;
+		// identification
+
+		// flags
+
+		// 13 bit fragment offset
+
+		// TTL
+
+		// protocol
+		ip_data[9] = 0x11;
+
+		// Source
+		ip_data[12] = ip_sourceIP[0];
+		ip_data[13] = ip_sourceIP[1];
+		ip_data[14] = ip_sourceIP[2];
+		ip_data[15] = ip_sourceIP[3];
+
+		// Destination
+		ip_data[16] = destinationAddress[0];
+		ip_data[17] = destinationAddress[1];
+		ip_data[18] = destinationAddress[2];
+		ip_data[19] = destinationAddress[3];
+
+		// header checksum
+		// 헤더 체크섬 만들기
+
 
 		// Destination 주소 설정은 RIPLayer에서 완료
 		// 어느 Layer로 가야할지 택.
@@ -88,12 +119,19 @@ public class IPLayer extends BaseLayer {
 		frame_dst_ip[2] = data[18];
 		frame_dst_ip[3] = data[19];
 
-		if( data[10] == 0x00 && data[11] == 0x11 ){
+		if( data[9] == 0x11 ){
 			// UDP 레이어
 			System.out.println("here2");
+			byte[] frame_src_ip = new byte[4];
+
+			frame_src_ip[0] = data[12];
+			frame_src_ip[1] = data[13];
+			frame_src_ip[2] = data[14];
+			frame_src_ip[3] = data[15];
+
 			byte[] udpData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
 
-			((UDPLayer)this.getUpperLayer()).receiveUDP(udpData, frame_dst_ip);
+			((UDPLayer)this.getUpperLayer()).receiveUDP(udpData, frame_src_ip);
 		}else{
 			// 데이터
 			System.arraycopy(data, 0, ip_data, 0, data.length);

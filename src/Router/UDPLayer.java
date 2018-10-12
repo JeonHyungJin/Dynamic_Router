@@ -138,7 +138,7 @@ public class UDPLayer extends BaseLayer {
             if (dst_port[0] == 0x02 && dst_port[1] == 0x08) {
                 // rip 프로토콜 인거~
                 byte[] dataRIP = new byte[data.length - UDP_HEAD_SIZE];
-                System.arraycopy(data, 8, dataRIP, 0, dataRIP.length);
+                System.arraycopy(data, UDP_HEAD_SIZE, dataRIP, 0, dataRIP.length);
 
                 ((RIPLayer) this.getUpperLayer()).receiveRIP(dataRIP, gateway);
             }
@@ -170,7 +170,7 @@ public class UDPLayer extends BaseLayer {
         }
     }
 
-    boolean sendRIP(byte[] data) {
+    boolean sendRIP(byte[] data, byte[] udp_destinationAddress) {
         int length = data.length;
         byte[] destinationPort = {(byte) 0x02, 0x08};
         byte[] sourcePort = {(byte) 0x02, 0x08}; //임의로 넣어 놓은 것.
@@ -206,7 +206,7 @@ public class UDPLayer extends BaseLayer {
             udp_data[i + UDP_HEAD_SIZE] = data[i];
 
 
-        if (((IPLayer) this.getUnderLayer()).sendUDP(udp_data)) {
+        if (((IPLayer) this.getUnderLayer()).sendUDP(udp_data, udp_destinationAddress)) {
             return true;
         } else
             return false;
