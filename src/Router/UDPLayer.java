@@ -131,7 +131,7 @@ public class UDPLayer extends BaseLayer {
         System.out.println("여길 온다고?!");
         if (checkChecksum(data)) {
             byte[] dst_port = new byte[2];
-            // byte-order 고민한번쯤은~
+            // byte-order 한번 고민쯤은~
             dst_port[0] = data[2];
             dst_port[1] = data[3];
 
@@ -141,6 +141,8 @@ public class UDPLayer extends BaseLayer {
                 System.arraycopy(data, UDP_HEAD_SIZE, dataRIP, 0, dataRIP.length);
 
                 ((RIPLayer) this.getUpperLayer()).receiveRIP(dataRIP, gateway);
+            }else{
+                return false;
             }
         } else {
             // checksum 오류 맨~
@@ -170,7 +172,7 @@ public class UDPLayer extends BaseLayer {
         }
     }
 
-    boolean sendRIP(byte[] data, byte[] udp_destinationAddress) {
+    boolean sendRIP(byte[] data) {
         int length = data.length;
         byte[] destinationPort = {(byte) 0x02, 0x08};
         byte[] sourcePort = {(byte) 0x02, 0x08}; //임의로 넣어 놓은 것.
@@ -206,7 +208,7 @@ public class UDPLayer extends BaseLayer {
             udp_data[i + UDP_HEAD_SIZE] = data[i];
 
 
-        if (((IPLayer) this.getUnderLayer()).sendUDP(udp_data, udp_destinationAddress)) {
+        if (((IPLayer) this.getUnderLayer()).sendUDP(udp_data)) {
             return true;
         } else
             return false;
