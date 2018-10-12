@@ -185,7 +185,6 @@ public class ARPLayer extends BaseLayer {
 			while (count < 20) {
 				try {
 					Thread.sleep(100);
-					System.out.println("ing...");
 					if (findARPCacheTable(dest_ip_address) != -1 && ARPCacheTable[findARPCacheTable(dest_ip_address)][10] != 0) {
 						System.out.println("arp 찾기 끝");
 						byte[] dest_mac_address = new byte[6];
@@ -243,7 +242,6 @@ public class ARPLayer extends BaseLayer {
 		System.arraycopy(ARP_targetEthAddr, 0, send_arp_data, 18, 6);
 		System.arraycopy(dest_ip_address, 0, send_arp_data, 24, 4);
 
-		System.out.printf("%d.%d.%d.%d\n", dest_ip_address[0], dest_ip_address[1], dest_ip_address[2],dest_ip_address[3]);
 		if (findARPCacheTable(dest_ip_address) == -1)
 			setARPCacheTable(dest_ip_address, temp, (byte) 0);
 		

@@ -11,7 +11,9 @@ public class RIPLayer extends BaseLayer {
     int interfaceNumber;
     RIPLayer otherRIPLayer;
 
-    void setRoutingTable(RoutingTable[] routingTable) {
+    byte[] max_hop = {(byte)0x00, 0x00,0x00, 0x10};
+
+    public void setRoutingTable(RoutingTable[] routingTable) {
         this.routingTable = routingTable;
     }
 
@@ -19,6 +21,14 @@ public class RIPLayer extends BaseLayer {
     public RIPLayer(String layerName) {
         super(layerName);
         routingIndex=0;
+    }
+
+    public byte[] getIp_sourceIP() {
+        return ip_sourceIP;
+    }
+
+    public void setIp_sourceIP(byte[] ip_sourceIP) {
+        this.ip_sourceIP = ip_sourceIP;
     }
 
     public void setOtherRIPLayer(RIPLayer otherRIPLayer) {
@@ -34,48 +44,68 @@ public class RIPLayer extends BaseLayer {
             // 요청한 라우터에게 entire routing table을 보낸다.
             // 1. request에 대한 response - 들어온 곳
 
-            rip_message = new byte[4 + 20 * routingIndex];
-
-            this.rip_message[0] = 0x02;
-            this.rip_message[1] = 0x02;
-
-            // request에는 상대방이 원하는 엔트리에 대한 정보가 온다.
-            // routing table 내용을 entry로 하나씩 추가
+            // initial request
             if( dataRIP.length == 4 ) {
-                // initial request
+                rip_message = new byte[4 + 20 * routingIndex];
+
+                this.rip_message[0] = 0x02;
+                this.rip_message[1] = 0x02;
+
                 for (int i = 0; i < routingIndex; i++) {
-                    // 모든걸 다 넣어야 하는가 ?
-                    rip_message[4 + 20 * i + 0] = 0x0002;
-                    rip_message[4 + 20 * i + 2] = 0x0001;
+                    // 모든걸 다 // initial 이니
+                    rip_message[4 + 20 * i + 1] = 0x0002;
+                    rip_message[4 + 20 * i + 3] = 0x0001;
                     System.arraycopy(routingTable[i].getDestination(), 0, rip_message, 4 + 20 * i + 4, 4);
                     System.arraycopy(routingTable[i].getNetMask(), 0, rip_message, 4 + 20 * i + 8, 4);
-                    // next hop
-                    if (routingTable[i].getFlag() == Flag.UG) {
-                        System.arraycopy(routingTable[i].getGateway(), 0, rip_message, 4 + 20 * i + 12, 4);
-                    } else {
-                        System.arraycopy(ip_sourceIP, 0, rip_message, 4 + 20 * i + 12, 4);
-                    }
+                    // next h
+                    System.arraycopy(ip_sourceIP, 0, rip_message, 4 + 20 * i + 12, 4);
                     System.arraycopy(routingTable[i].getMetric(), 0, rip_message, 4 + 20 * i + 16, 4);
                 }
             }else{
-                // except initial
-                // 나중에
-               /* int entry_count = (dataRIP.length - 4) / 20;
+                // request에는 상대방이 원하는 엔트리에 대한 정보가 온다.
+                // routing table 내용을 entry로 하나씩 추가
+                int entry_count = (dataRIP.length - 4) / 20;
+
+                rip_message = new byte[4 + 20 * entry_count];
+
+                this.rip_message[0] = 0x02;
+                this.rip_message[1] = 0x02;
+                this.rip_message[2] = 0x00;
+                this.rip_message[3] = 0x00;
 
                 byte[] networkAddress = new byte[4];
-                byte[] netMask = new byte[4];
-                byte[] nexthop = new byte[4];
-                byte[] metric_byte = new byte[4];
-                int metric = 0;
+
 
                 for ( int i = 0; i < entry_count; i ++){
+                    System.arraycopy(dataRIP, 4 + 20 * i + 0, networkAddress, 0, networkAddress.length);
 
-                }*/
+                    int index = findRoutingEntry(networkAddress);
+
+                    if( index == -1){
+                        // 없어진 경우만 있다 가정
+                        rip_message[4 + 20 * i + 1] = 0x0002;
+                        rip_message[4 + 20 * i + 3] = 0x0001;
+                        System.arraycopy(networkAddress, 0, rip_message, 4 + 20 * i + 4, 4);
+                        System.arraycopy(routingTable[i].getNetMask(), 0, rip_message, 4 + 20 * i + 8, 4);
+                        // next h
+                        System.arraycopy(ip_sourceIP, 0, rip_message, 4 + 20 * i + 12, 4);
+                        System.arraycopy( max_hop, 0, rip_message, 4 + 20 * i + 16, 4);
+                    } else{
+                        // 현재 나의 테이블 정보를 전달.
+                        System.arraycopy(networkAddress, 0, rip_message, 4 + 20 * i + 4, 4);
+                        System.arraycopy(routingTable[i].getNetMask(), 0, rip_message, 4 + 20 * i + 8, 4);
+                        // next h
+                        System.arraycopy(ip_sourceIP, 0, rip_message, 4 + 20 * i + 12, 4);
+                        System.arraycopy(routingTable[i].getMetric(), 0, rip_message, 4 + 20 * i + 16, 4);
+                    }
+                }
             }
-            ((UDPLayer) this.getUnderLayer()).sendRIP(rip_message, gateway);
+
+            ((UDPLayer) this.getUnderLayer()).sendRIP(rip_message);
         } else if (dataRIP[0] == 0x02) {
             // response
-            // 2. response에 대한 response - 반대
+            // 2. response에 대한 response
+
 
             // 패킷 처리 알고리즘 ~, 패킷내용보면서 엔트리 추가시 게이트웨이는 gateway로
             int length = dataRIP.length;
@@ -85,23 +115,52 @@ public class RIPLayer extends BaseLayer {
             byte[] netMask = new byte[4];
             byte[] nexthop = new byte[4];
             byte[] metric_byte = new byte[4];
-            int metric = 0;
+            int metric;
+
+            int change_count = 0;
+            byte[] temp_message = new byte[entry_count*20];
+            byte[] temp_other_rip_message = new byte[entry_count*20];
+
 
             for (int i = 0; i < entry_count; i++) {
                 // 들어온 엔트리 알고리즘에 맞춰 테이블 업데이트.
-                System.arraycopy(dataRIP, 4 + 20 * i + 0, networkAddress, 0, networkAddress.length);
-                System.arraycopy(dataRIP, 4 + 20 * i + 4, netMask, 0, netMask.length);
-                System.arraycopy(dataRIP, 4 + 20 * i + 8, nexthop, 0, nexthop.length);
-                System.arraycopy(dataRIP, 4 + 20 * i + 12, metric_byte, 0, metric_byte.length);
+                System.arraycopy(dataRIP, 4 + 20 * i + 4, networkAddress, 0, networkAddress.length);
+                System.arraycopy(dataRIP, 4 + 20 * i + 8, netMask, 0, netMask.length);
+                System.arraycopy(dataRIP, 4 + 20 * i + 12, nexthop, 0, nexthop.length);
+                System.arraycopy(dataRIP, 4 + 20 * i + 16, metric_byte, 0, metric_byte.length);
                 metric = byteArrayToInt( metric_byte) ;
 
                 // 테이블 업데이트 중 ...
 
+                // metric 16인 경우 - 통신 불가, route poisoning
+                // 16인 경우 - poison reverse
+                // 변화가 생겼을 시, 즉각 전송
+                // 30초마다는 전체 전송,
                 int index = findRoutingEntry(networkAddress);
                 if ( index == -1 ) {
-                    // 추가
-                    routingTable[routingIndex].setRoutingTable(networkAddress,netMask, gateway, Flag.UG, interfaceNumber, routingIndex, metric + 1 );
-                    routingIndex++;
+                    if( metric != 16) {
+                        // 추가
+                        routingTable[routingIndex].setRoutingTable(networkAddress, netMask, nexthop, Flag.UG, interfaceNumber, routingIndex, metric + 1);
+                        routingIndex++;
+                        // 들온 곳에 보내는 경우
+                        temp_message[20 * change_count + 1] = 0x0002;
+                        temp_message[20 * change_count + 3] = 0x0001;
+                        System.arraycopy(networkAddress, 0, temp_message, 20 * change_count + 4, 4);
+                        System.arraycopy(netMask, 0, temp_message, 20 * change_count + 8, 4);
+                        // next h
+                        System.arraycopy(nexthop, 0, temp_message, 20 * change_count + 12, 4);
+                        System.arraycopy(max_hop, 0, temp_message, 20 * change_count + 16, 4);
+                        // 그 반대에 보내는 경우
+                        temp_other_rip_message[20 * change_count + 1] = 0x0002;
+                        temp_other_rip_message[20 * change_count + 3] = 0x0001;
+                        System.arraycopy(networkAddress, 0, temp_other_rip_message, 20 * change_count + 4, 4);
+                        System.arraycopy(netMask, 0, temp_other_rip_message, 20 * change_count + 8, 4);
+                        // next h
+                        System.arraycopy(ip_sourceIP, 0, temp_other_rip_message, 20 * change_count + 12, 4);
+                        System.arraycopy(metric + 1, 0, temp_other_rip_message, 20 * change_count + 16, 4);
+
+                        change_count++;
+                    }
                 }else{
                     int check_nextHop = 1;
                     // next_hop is the same
@@ -112,82 +171,116 @@ public class RIPLayer extends BaseLayer {
                         }
                     }
                     if( check_nextHop != 0 ){
-                        // Replace entry in the table
-                        routingTable[index].setRoutingTable(networkAddress, netMask, gateway, Flag.UG, interfaceNumber, index, metric + 1);
-                    }else{
-                        if( routingTable[index].getMetric() > metric ){
-                            // interfaceNumber 어떻게 구하지
-                            routingTable[index].setRoutingTable(networkAddress, netMask, gateway, Flag.UG, interfaceNumber, index, metric + 1);
+                        // 기존 테이블 엔트리 게이트 웨이와 비교하여 보니 바로 옆에 친구가 보내온 작은 테이블 엔트리다.
+                        if( metric != 16) {
+                            routingTable[index].setRoutingTable(networkAddress, netMask, nexthop, Flag.UG, interfaceNumber, index, metric + 1);
+                            // 들온 곳에 보내는 경우
+                            temp_message[20 * change_count + 1] = 0x0002;
+                            temp_message[20 * change_count + 3] = 0x0001;
+                            System.arraycopy(networkAddress, 0, temp_message, 20 * change_count + 4, 4);
+                            System.arraycopy(netMask, 0, temp_message, 20 * change_count + 8, 4);
+                            // next h
+                            System.arraycopy(nexthop, 0, temp_message, 20 * change_count + 12, 4);
+                            System.arraycopy(max_hop, 0, temp_message, 20 * change_count + 16, 4);
+                            // 그 반대에 보내는 경우
+                            temp_other_rip_message[20 * change_count + 1] = 0x0002;
+                            temp_other_rip_message[20 * change_count + 3] = 0x0001;
+                            System.arraycopy(networkAddress, 0, temp_other_rip_message, 20 * change_count + 4, 4);
+                            System.arraycopy(netMask, 0, temp_other_rip_message, 20 * change_count + 8, 4);
+                            // next h
+                            System.arraycopy(ip_sourceIP, 0, temp_other_rip_message, 20 * change_count + 12, 4);
+                            System.arraycopy(metric + 1, 0, temp_other_rip_message, 20 * change_count + 16, 4);
 
+                            change_count++;
                         }else{
+                            // unreachable 된 경우
+                            // 테이블 삭제와 주변(반대)에 전달.
+                            for ( int j = i; j < routingIndex-1 ; j++)
+                                routingTable[j] = routingTable[j+1];
+                            routingIndex--;
+
+                            // 들온 곳에 보내는 경우
+                            temp_message[20 * change_count + 1] = 0x0002;
+                            temp_message[20 * change_count + 3] = 0x0001;
+                            System.arraycopy(networkAddress, 0, temp_message, 20 * change_count + 4, 4);
+                            System.arraycopy(netMask, 0, temp_message, 20 * change_count + 8, 4);
+                            // next h
+                            System.arraycopy(nexthop, 0, temp_message, 20 * change_count + 12, 4);
+                            System.arraycopy(max_hop, 0, temp_message, 20 * change_count + 16, 4);
+
+                            temp_other_rip_message[20 * change_count + 1] = 0x0002;
+                            temp_other_rip_message[20 * change_count + 3] = 0x0001;
+                            System.arraycopy(networkAddress, 0, temp_other_rip_message, 20 * change_count + 4, 4);
+                            System.arraycopy(netMask, 0, temp_other_rip_message, 20 * change_count + 8, 4);
+                            // next h
+                            System.arraycopy(ip_sourceIP, 0, temp_other_rip_message, 20 * change_count + 12, 4);
+                            System.arraycopy(max_hop, 0, temp_other_rip_message, 20 * change_count + 16, 4);
+
+                            change_count++;
+                        }
+                    }else{
+                        if( metric != 16 ){
+                            if( routingTable[index].getMetric() > metric ){
+                                routingTable[index].setRoutingTable(networkAddress, netMask, nexthop, Flag.UG, interfaceNumber, index, metric + 1);
+
+                                // 들온 곳에 보내는 경우
+                                temp_message[20 * change_count + 1] = 0x0002;
+                                temp_message[20 * change_count + 3] = 0x0001;
+                                System.arraycopy(networkAddress, 0, temp_message, 20 * change_count + 4, 4);
+                                System.arraycopy(netMask, 0, temp_message, 20 * change_count + 8, 4);
+                                // next h
+                                System.arraycopy(nexthop, 0, temp_message, 20 * change_count + 12, 4);
+                                System.arraycopy(max_hop, 0, temp_message, 20 * change_count + 16, 4);
+
+                                temp_other_rip_message[20 * change_count + 1] = 0x0002;
+                                temp_other_rip_message[20 * change_count + 3] = 0x0001;
+                                System.arraycopy(networkAddress, 0, temp_other_rip_message, 20 * change_count + 4, 4);
+                                System.arraycopy(netMask, 0, temp_other_rip_message, 20 * change_count + 8, 4);
+                                // next h
+                                System.arraycopy(ip_sourceIP, 0, temp_other_rip_message, 20 * change_count + 12, 4);
+                                System.arraycopy(metric+1, 0, temp_other_rip_message, 20 * change_count + 16, 4);
+
+                                change_count++;
+                            }else{
+                                // do nothing
+                            }
+                        }else{
+                            // poison reverse 에 해당하는 경우
                             // do nothing
                         }
                     }
                 }
             }
-            // entry 업데이트 한 후 상대 인터페이스로 전달
-            rip_message = new byte[4 + 20 * routingIndex];
-            byte[] other_rip_message = new byte[4 + 20 * routingIndex];
-            byte[] other_gateway = {(byte)0xff,(byte)0xff,(byte)0xff,(byte)0xff};
-            int find_other = 0;
-            this.rip_message[0] = 0x02;
-            this.rip_message[1] = 0x02;
-            this.rip_message[2] = 0x00;
-            this.rip_message[3] = 0x00;
 
-            other_rip_message[0] = 0x02;
-            other_rip_message[1] = 0x02;
-            other_rip_message[2] = 0x00;
-            other_rip_message[3] = 0x00;
+            System.out.println("바뀐 엔트리 개수 : "+ change_count);
 
-            // initial request
-            byte[] max_hop = {(byte)0x00, 0x00,0x00, 0x10};
+            if( change_count != 0 ){
+                // 변화가 생긴 경우, 즉시 전송
+                rip_message = new byte[ 4 + 20 * change_count ];
+                byte[] other_rip_message = new byte[ 4 + 20 * change_count ];
 
-            for (int i = 0; i < routingIndex; i++) {
-                // 모든걸 다 넣어야 하는가 ?
-                // 현재 인터페이스
-                // 상대 인터페이스의 게이트웨이 찾기
-                // how ?
+                this.rip_message[0] = 0x02;
+                this.rip_message[1] = 0x02;
+                this.rip_message[2] = 0x00;
+                this.rip_message[3] = 0x00;
 
-                rip_message[4 + 20 * i + 0] = 0x0002;
-                rip_message[4 + 20 * i + 2] = 0x0001;
-                System.arraycopy(routingTable[i].getDestination(), 0, rip_message, 4 + 20 * i + 4, 4);
-                System.arraycopy(routingTable[i].getNetMask(), 0, rip_message, 4 + 20 * i + 8, 4);
-                // next hop
-                if (routingTable[i].getFlag() == Flag.UG) {
-                    System.arraycopy(routingTable[i].getGateway(), 0, rip_message, 4 + 20 * i + 12, 4);
-                } else {
-                    System.arraycopy(ip_sourceIP, 0, rip_message, 4 + 20 * i + 12, 4);
-                }
-                // 상대 인터페이스
-                other_rip_message[4 + 20 * i + 0] = 0x0002;
-                other_rip_message[4 + 20 * i + 2] = 0x0001;
-                System.arraycopy(routingTable[i].getDestination(), 0, other_rip_message, 4 + 20 * i + 4, 4);
-                System.arraycopy(routingTable[i].getNetMask(), 0, other_rip_message, 4 + 20 * i + 8, 4);
-                // next hop
-                if (routingTable[i].getFlag() == Flag.UG) {
-                    System.arraycopy(routingTable[i].getGateway(), 0, other_rip_message, 4 + 20 * i + 12, 4);
-                } else {
-                    System.arraycopy(ip_sourceIP, 0, other_rip_message, 4 + 20 * i + 12, 4);
-                }
+                other_rip_message[0] = 0x02;
+                other_rip_message[1] = 0x02;
+                other_rip_message[2] = 0x00;
+                other_rip_message[3] = 0x00;
 
-                if ( routingTable[i].getInterface() == interfaceNumber){
-                    System.arraycopy(max_hop, 0, rip_message, 4 + 20 * i + 16, 4);
-                    System.arraycopy(routingTable[i].getMetric(), 0, other_rip_message, 4 + 20 * i + 16, 4);
-                }else{
-                    System.arraycopy(routingTable[i].getMetric(), 0, rip_message, 4 + 20 * i + 16, 4);
-                    System.arraycopy(max_hop, 0, other_rip_message, 4 + 20 * i + 16, 4);
-                }
+                System.arraycopy(rip_message,4, temp_message, 0, 20*change_count);
+                System.arraycopy(other_rip_message, 4, temp_other_rip_message, 0, 20*change_count);
+
+                ((UDPLayer)this.getUnderLayer()).sendRIP( rip_message);
+                ((UDPLayer) otherRIPLayer.getUnderLayer()).sendRIP(other_rip_message);
             }
-            ((UDPLayer)this.getUnderLayer()).sendRIP( rip_message, gateway);
-            ((UDPLayer) otherRIPLayer.getUnderLayer()).sendRIP(other_rip_message, other_gateway );
         }
     }
 
     public void sendRIP(){
         //router 들에게만
         // hum...
-
         // timer 별로 송신
 
     }
@@ -208,20 +301,8 @@ public class RIPLayer extends BaseLayer {
         this.rip_message[2] = 0x00;
         this.rip_message[3] = 0x00;
 
-        byte[] broadcast = {(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff};
-/*
-        this.rip_message[4] = 0x0002;
-        this.rip_message[6] = 0x0001;
-
-        byte[] netmask ={(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0x00};
-        System.arraycopy( ip_sourceIP , 0, rip_message, 8, 4);
-        System.arraycopy( netmask, 0, rip_message, 12, 4);
-        System.arraycopy(broadcast, 0, rip_message, 16, 4);
-        System.arraycopy(0, 0, rip_message, 20, 4);
-*/
-
         // request 전송
-        ((UDPLayer) this.getUnderLayer()).sendRIP(rip_message, broadcast);
+        ((UDPLayer) this.getUnderLayer()).sendRIP(rip_message);
     }
 
     int findRoutingEntry(byte[] address) {
@@ -241,7 +322,6 @@ public class RIPLayer extends BaseLayer {
             }
         }
         return -1;
-
     }
 
     public int byteArrayToInt(byte bytes[]) {
