@@ -1,5 +1,8 @@
 package Router;
 
+import java.util.Timer;
+import java.util.TimerTask;
+
 /**
  * Routing table
  * 
@@ -20,7 +23,12 @@ public class RoutingTable {
    private int RT_interface;
    private int RT_metric;
    private int RT_class;
-   private int RT_time;
+   private int RT_state;
+   private Timer expiration_timer;
+   private TimerTask expiration_task;
+   private Timer garbage_timer;
+   private TimerTask garbage_task;
+
 
    public RoutingTable() {
       RT_des_IP = new byte[RT_DES_SIZE];
@@ -30,6 +38,75 @@ public class RoutingTable {
       RT_interface = 0;
       RT_metric = 0;
       RT_Index = 0;
+      RT_state = 180;
+
+   }
+
+   public RoutingTable(byte[] desIP, byte[] netmaskIP, byte[] gatewayIP, Flag flag, int interfaceNumber, int index, int metric) {
+
+      System.arraycopy(desIP, 0, RT_des_IP, 0, 4);
+      System.arraycopy(netmaskIP, 0, RT_netmask_IP, 0, 4);
+      System.arraycopy(gatewayIP, 0, RT_gateway_IP, 0, 4);
+      RT_flag = flag;
+      RT_interface = interfaceNumber;
+      RT_Index = index;
+
+      if ((netmaskIP[3] & (byte)0xff) != 0) {		//255.255.255.255
+         RT_class = 3;
+      } else if ((netmaskIP[2] & (byte)0xff) != 0) {	//255.255.255.0
+         RT_class = 2;
+      } else if ((netmaskIP[1] & (byte)0xff) != 0) {	//255.255.0.0		//기존 코드 오타
+         RT_class = 1;
+      } else {		//255.0.0.0
+         RT_class = 0;
+      }
+      this.RT_metric = metric;
+
+      RT_state = 180; // ?
+      if( RT_flag == Flag.UG ){
+         // 게이트 웨이를 타고 가야만 만날수 있는 경우
+         // 180초 타이머 돌리기
+         expiration_timer = new Timer();
+
+         expiration_task = new TimerTask() {
+            @Override
+            public void run() {
+                  RT_metric = 16;
+                  // 나 바뀌었어용~
+                  // sending
+                  // 반대쪽 으로 보내기인데
+               // 정보 변경
+                  ApplicationLayer.ifTableChaged(1, RT_Index, RT_interface);
+               garbage_timer.schedule(garbage_task,0, 120000);
+               expiration_timer.cancel();
+            }
+         };
+
+         garbage_task = new TimerTask() {
+            @Override
+            public void run() {
+               // this.index의 테이블을 지운다.
+               // 굳이 보낼 필요는 없다.
+               ApplicationLayer.ifTableChaged(3, RT_Index, RT_interface);
+               garbage_timer.cancel();
+            }
+         };
+
+         expiration_timer.schedule(expiration_task,0, 180000);
+      }else{
+         this.expiration_timer = null;
+         this.expiration_task = null;
+         this.garbage_task= null;
+         this.garbage_timer = null;
+      }
+   }
+
+   public int getRT_state() {
+      return RT_state;
+   }
+
+   public void setRT_state(int RT_state) {
+      this.RT_state = RT_state;
    }
 
    public void setRT_Index(int RT_Index) {
@@ -140,5 +217,11 @@ public class RoutingTable {
             count++;
 
       return count;		//매개변수로 들어온 netmaskIP중에서 255의 갯수를 반환
+   }
+
+   public void restartExpireTimer() {
+      this.garbage_task.cancel();
+      this.expiration_timer.cancel();
+      expiration_timer.schedule(expiration_task,0, 180000);
    }
 }

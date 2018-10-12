@@ -39,7 +39,7 @@ import javax.swing.SwingConstants;
  */
 
 public class ApplicationLayer extends JFrame {
-	/* GUI 구성 
+    /* GUI 구성
 	 * ip, mac 주소 입력
 	 * table, button 등
 	 * */
@@ -82,13 +82,17 @@ public class ApplicationLayer extends JFrame {
    static EthernetLayer m_EthernetLayer_1;
    static ARPLayer m_ARPLayer_1;
    static IPLayer m_IPLayer_1;
+   static UDPLayer m_UDPLayer_1;
+   static RIPLayer m_RIPLayer_1;
    static ApplicationLayer m_ApplicationLayer;
 
    static PacketDriverLayer m_PacketDriverLayer_2;
    static EthernetLayer m_EthernetLayer_2;
    static ARPLayer m_ARPLayer_2;
    static IPLayer m_IPLayer_2;
-   static RoutingTable[] routingTable;
+    static UDPLayer m_UDPLayer_2;
+    static RIPLayer m_RIPLayer_2;
+    static RoutingTable[] routingTable;
    static int routingIndex;
    
    int adapterNumber = 0;
@@ -109,15 +113,19 @@ public class ApplicationLayer extends JFrame {
       m_EthernetLayer_1 = new EthernetLayer("CEthernetLayer_1");
       m_ARPLayer_1 = new ARPLayer("ARPLayer_1");
       m_IPLayer_1 = new IPLayer("CIPLayer_1");
+       m_UDPLayer_1 = new UDPLayer("CUDPLayer_1");
+       m_RIPLayer_1 = new RIPLayer("CRIPLayer_1");
       m_ApplicationLayer = new ApplicationLayer();
 
       m_PacketDriverLayer_2 = new PacketDriverLayer("CPacketDriverLayer_2");
       m_EthernetLayer_2 = new EthernetLayer("CEthernetLayer_2");
       m_ARPLayer_2 = new ARPLayer("ARPLayer_2");
       m_IPLayer_2 = new IPLayer("CIPLayer_2");
+       m_UDPLayer_2 = new UDPLayer("CUDPLayer_2");
+       m_RIPLayer_2 = new RIPLayer("CRIPLayer_2");
       
       /* 레이어 연결 
-       * 밑에서부터 : PacketDriverLayer <-> EthernetLayer <-> IPLayer -> ApplicationLayer
+       * 밑에서부터 : PacketDriverLayer <-> EthernetLayer <-> IPLayer <-> UDPLayer <-> RIPLayer -> ApplicationLayer
        * 									  ^- ARPLayer <-^
        *  */
       m_PacketDriverLayer_1.setUpperLayer(m_EthernetLayer_1);
@@ -126,7 +134,11 @@ public class ApplicationLayer extends JFrame {
       m_ARPLayer_1.setUnderLayer(m_EthernetLayer_1);
       m_ARPLayer_1.setUpperLayer(m_IPLayer_1);
       m_IPLayer_1.setUnderLayer(m_ARPLayer_1);
-      m_IPLayer_1.setUpperLayer(m_ApplicationLayer);
+      m_IPLayer_1.setUpperLayer(m_UDPLayer_1);
+      m_UDPLayer_1.setUnderLayer(m_IPLayer_1);
+      m_UDPLayer_1.setUpperLayer(m_RIPLayer_1);
+      m_RIPLayer_1.setUnderLayer(m_UDPLayer_1);
+      m_RIPLayer_1.setUpperLayer(m_ApplicationLayer);
 
       m_PacketDriverLayer_2.setUpperLayer(m_EthernetLayer_2);
       m_EthernetLayer_2.setUnderLayer(m_PacketDriverLayer_2);
@@ -134,7 +146,11 @@ public class ApplicationLayer extends JFrame {
       m_ARPLayer_2.setUnderLayer(m_EthernetLayer_2);
       m_ARPLayer_2.setUpperLayer(m_IPLayer_2);
       m_IPLayer_2.setUnderLayer(m_ARPLayer_2);
-      m_IPLayer_2.setUpperLayer(m_ApplicationLayer);
+       m_IPLayer_2.setUpperLayer(m_UDPLayer_2);
+       m_UDPLayer_2.setUnderLayer(m_IPLayer_2);
+       m_UDPLayer_2.setUpperLayer(m_RIPLayer_2);
+       m_RIPLayer_2.setUnderLayer(m_UDPLayer_2);
+       m_RIPLayer_2.setUpperLayer(m_ApplicationLayer);
 
       /* routing table 공간 할당 */
 	  routingTable = new RoutingTable[20];
@@ -146,10 +162,17 @@ public class ApplicationLayer extends JFrame {
        m_IPLayer_1.setRoutingIndex(routingIndex);
        m_IPLayer_2.setRoutingIndex(routingIndex);
 
+       m_RIPLayer_1.setRoutingTable(routingTable);
+       m_RIPLayer_2.setRoutingTable(routingTable);
+       m_RIPLayer_1.setRoutingIndex(routingIndex);
+       m_RIPLayer_2.setRoutingIndex(routingIndex);
 
        /* Routing 후 알맞은 interface에게 보내기 위해 서로 다른 IPLayer를 각각 연결 */
       m_IPLayer_1.setOtherIPLayer(m_IPLayer_2);
       m_IPLayer_2.setOtherIPLayer(m_IPLayer_1);
+
+      m_RIPLayer_1.setOtherRIPLayer(m_RIPLayer_2);
+      m_RIPLayer_2.setOtherRIPLayer(m_RIPLayer_1);
 
       /* 각 Interface별 arp 정보 저장을 위해 arp cache table 연결 */
       m_ARPLayer_1.set_ARPTable(ARPCacheTable);
@@ -158,7 +181,10 @@ public class ApplicationLayer extends JFrame {
       /* 각 Interface별 번호 설정 */
       m_IPLayer_1.setInterfaceNumber(0);
       m_IPLayer_2.setInterfaceNumber(1);
-      
+
+      m_RIPLayer_1.setInterfaceNumber(0);
+      m_RIPLayer_2.setInterfaceNumber(1);
+
       /* 프로그램 GUI 띄우기 */
       EventQueue.invokeLater(new Runnable() {
          public void run() {
@@ -177,6 +203,55 @@ public class ApplicationLayer extends JFrame {
       Thread object = new Thread(thread);
       object.start();
 
+   }
+
+   // id
+    // 엔트리 추가, 수정, 삭제, 만료 된 경우
+   static void ifTableChaged(int id, int index, int interfaceNumber){
+       if( id == 0 ){
+           // 새로 추가 된 경우
+           // 이 경우 index는 현재 라우팅 테이블 엔트리 개수
+           routingIndex = index;
+           m_IPLayer_1.setRoutingIndex(routingIndex);
+           m_IPLayer_2.setRoutingIndex(routingIndex);
+           m_RIPLayer_1.setRoutingIndex(routingIndex);
+           m_RIPLayer_2.setRoutingIndex(routingIndex);
+
+           StaticRoutingList.add(byte2IP(routingTable[routingIndex-1].getDestination()) + "  "
+                   + byte2IP(routingTable[routingIndex-1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex-1].getGateway())
+                   + "  " + routingTable[routingIndex-1].getFlag() + "  " + routingTable[routingIndex-1].getInterface() + "  " + routingTable[routingIndex-1].getMetric());
+
+       }else if ( id == 1 ){
+           // 엔트리 정보가 변경된 경우
+           // 바뀐 index가 넘어온다.
+            StaticRoutingList.replaceItem(byte2IP(routingTable[routingIndex-1].getDestination()) + "  "
+                    + byte2IP(routingTable[routingIndex-1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex-1].getGateway())
+                    + "  " + routingTable[routingIndex-1].getFlag() + "  " + routingTable[routingIndex-1].getInterface() + "  " + routingTable[routingIndex-1].getMetric(), index);
+       }else if ( id == 2 ){
+           // message를 받아서, 이미 routing table에서 삭제가 된 경우
+           // 인덱스 개수 업데이트하고,
+           StaticRoutingList.remove(index);
+           routingIndex--;
+           m_IPLayer_1.setRoutingIndex(routingIndex);
+           m_IPLayer_2.setRoutingIndex(routingIndex);
+           m_RIPLayer_1.setRoutingIndex(routingIndex);
+           m_RIPLayer_2.setRoutingIndex(routingIndex);
+
+       }else if ( id == 3 ){
+           // 만료가 되어 삭제 될 경우
+           // 만료 된 다면, routing 테이블에서 삭제해야하고, GUI 에서도 삭제해야하고
+           for ( int j = index; j < routingIndex-1 ; j++)
+               routingTable[j] = routingTable[j+1];
+           routingTable[routingIndex-1] = null;
+
+           StaticRoutingList.remove(index);
+
+           routingIndex--;
+           m_IPLayer_1.setRoutingIndex(routingIndex);
+           m_IPLayer_2.setRoutingIndex(routingIndex);
+           m_RIPLayer_1.setRoutingIndex(routingIndex);
+           m_RIPLayer_2.setRoutingIndex(routingIndex);
+       }
    }
 
    static class Chat_Send_Thread implements Runnable {
@@ -364,6 +439,7 @@ public class ApplicationLayer extends JFrame {
 	            for (int i = 0, j = 0; i < 12; i += 2, j++) {
 	                tempSourceAddress[j] = Integer.valueOf(Mac_address.getText().substring(i, i + 2), 16).byteValue();
 	            }
+	            m_RIPLayer_1.setIp_sourceIP(tempIPAddress1);
 	            m_IPLayer_1.setSourceIpAddress(tempIPAddress1);
 	            m_ARPLayer_1.setSrcIPAddress(MyIPaddress.getText());
 	            m_ARPLayer_1.setSrcEthAddress(tempSourceAddress);
@@ -392,6 +468,8 @@ public class ApplicationLayer extends JFrame {
 		            	ProxyARPMac.setEnabled(true);
 		            	ProxyARPAdd_btn.setEnabled(true);
 		            	ProxyARPDelete_btn.setEnabled(true);
+                        m_RIPLayer_1.initialization();
+		            	m_RIPLayer_2.initialization();
 	            	}
 	            } else {
 	            	myAddressSet_btn.setText("Set");
@@ -432,6 +510,7 @@ public class ApplicationLayer extends JFrame {
 		    	for (int i = 0, j = 0; i < 12; i += 2, j++) {
 		            tempSourceAddress2[j] = Integer.valueOf(Mac_address2.getText().substring(i, i + 2), 16).byteValue();
 		        }
+		        m_RIPLayer_2.setIp_sourceIP(tempIPAddress2);
 	            m_IPLayer_2.setSourceIpAddress(tempIPAddress2);
 	            m_ARPLayer_2.setSrcIPAddress(MyIPaddress2.getText());
 	            m_ARPLayer_2.setSrcEthAddress(tempSourceAddress2);
@@ -460,6 +539,8 @@ public class ApplicationLayer extends JFrame {
 		            	ProxyARPMac.setEnabled(true);
 		            	ProxyARPAdd_btn.setEnabled(true);
 		            	ProxyARPDelete_btn.setEnabled(true);
+                        m_RIPLayer_1.initialization();
+                        m_RIPLayer_2.initialization();
 	            	}
 	            } else {
 	            	myAddressSet_btn2.setText("Set");
@@ -506,7 +587,6 @@ public class ApplicationLayer extends JFrame {
 						JOptionPane.WARNING_MESSAGE);
 			} else {
 				// static routing table 추가
-	       	  	routingTable[routingIndex] = new RoutingTable();
 	            Flag flag;
 	            // flag, dest, netmask, gateway 정보 설정
 	            if(CheckBoxUp.isSelected() && CheckBoxGateway.isSelected())
@@ -535,9 +615,8 @@ public class ApplicationLayer extends JFrame {
 	            for(int i = 0; i < 4; i ++){
 	            	tempGateway[i] = ((byte) Integer.parseInt(Gateway.getText().substring(i*3, (i+1)*3)));
 	            }
-	             
-	            routingTable[routingIndex].setRoutingTable(tempDestination, tempNetmask, tempGateway, flag, 
-	                   Integer.parseInt(interface_box.getText()), routingIndex, 1);
+                routingTable[routingIndex] = new RoutingTable(tempDestination, tempNetmask, tempGateway, flag,
+                        Integer.parseInt(interface_box.getText()), routingIndex, 1);
 	            // 무슨 용도인지 모르겠다.
                 // 클래스에 따라서 정렬하려하는 거 같은데, 굳이 안해줘도 될듯해서 주석쓰
 	            /*for (int j = 0; j < routingIndex; j++) {
@@ -555,13 +634,18 @@ public class ApplicationLayer extends JFrame {
 	            routingIndex++;
                 m_IPLayer_1.setRoutingIndex(routingIndex);
                 m_IPLayer_2.setRoutingIndex(routingIndex);
-
+                m_RIPLayer_1.setRoutingIndex(routingIndex);
+                m_RIPLayer_2.setRoutingIndex(routingIndex);
             }
          } else if (e.getSource() == StaticRoutingDelete_btn) { // static router table 삭제 버튼 클릭시
         	if(routingIndex > 0){
 	        	StaticRoutingList.remove(routingIndex - 1);
 	        	routingTable[routingIndex] = null;
 	        	routingIndex--;
+                m_IPLayer_1.setRoutingIndex(routingIndex);
+                m_IPLayer_2.setRoutingIndex(routingIndex);
+                m_RIPLayer_1.setRoutingIndex(routingIndex);
+                m_RIPLayer_2.setRoutingIndex(routingIndex);
         	}
          } else if (e.getSource() == ProxyARPAdd_btn) { // proxy table 추가 버튼 클릭시
 				if (ProxyARPDevice.getText().length() < 1 && ProxyARPIP.getText().length() < 12
