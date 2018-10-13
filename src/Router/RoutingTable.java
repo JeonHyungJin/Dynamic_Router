@@ -83,18 +83,17 @@ public class RoutingTable {
                   ApplicationLayer.ifTableChaged(4, RT_Index, RT_interface);
 
                garbage_timer = new Timer();
+               garbage_task = new TimerTask() {
+                  @Override
+                  public void run() {
+                     // this.index의 테이블을 지운다.
+                     // 굳이 보낼 필요는 없다.
+                     ApplicationLayer.ifTableChaged(3, RT_Index, RT_interface);
+                     garbage_timer.cancel();
+                  }
+               };
                garbage_timer.schedule(garbage_task,120000, 120000);
                expiration_timer.cancel();
-            }
-         };
-
-         garbage_task = new TimerTask() {
-            @Override
-            public void run() {
-               // this.index의 테이블을 지운다.
-               // 굳이 보낼 필요는 없다.
-               ApplicationLayer.ifTableChaged(3, RT_Index, RT_interface);
-               garbage_timer.cancel();
             }
          };
 
@@ -230,12 +229,35 @@ public class RoutingTable {
          // 지울려 하는데 패킷 도착한 경우
          RT_state = 0;
          this.garbage_timer.cancel();
-         expiration_timer = new Timer();
-         expiration_timer.schedule(expiration_task,180000, 180000);
       }else{
          this.expiration_timer.cancel();
-         expiration_timer = new Timer();
-         expiration_timer.schedule(expiration_task,180000, 180000);
       }
+      expiration_timer = new Timer();
+      expiration_task = new TimerTask() {
+         @Override
+         public void run() {
+            RT_metric = 16;
+            // 나 바뀌었어용~
+            // sending
+            // 반대쪽 으로 보내기인데
+            // 정보 변경
+            RT_state = -1;
+            ApplicationLayer.ifTableChaged(4, RT_Index, RT_interface);
+
+            garbage_timer = new Timer();
+            garbage_task = new TimerTask() {
+               @Override
+               public void run() {
+                  // this.index의 테이블을 지운다.
+                  // 굳이 보낼 필요는 없다.
+                  ApplicationLayer.ifTableChaged(3, RT_Index, RT_interface);
+                  garbage_timer.cancel();
+               }
+            };
+            garbage_timer.schedule(garbage_task,120000, 120000);
+            expiration_timer.cancel();
+         }
+      };
+      expiration_timer.schedule(expiration_task,180000, 180000);
    }
 }
