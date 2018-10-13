@@ -128,12 +128,12 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
     void setLength(byte[] data) {
         // 길이를 설정한다.
         // data.length + 8 을 255 기준으로 2바이트로 나누어 저장한다.
-        if ((data.length + 8) < 255) { //확실쓰
+        if ((data.length + 8) < 256) { //확실쓰
             udp_length[0] = (byte) 0x00;
             udp_length[1] = (byte) ((data.length + 8) & 0xFF);
         } else {
-            udp_length[0] = (byte) (((data.length + 8)) / 0xFF);
-            udp_length[1] = (byte) (((data.length + 8)) % 0xFF);
+            udp_length[0] = (byte) (((data.length + 8)) / 256);
+            udp_length[1] = (byte) (((data.length + 8)) % 256);
         }
 
     }
