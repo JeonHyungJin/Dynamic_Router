@@ -208,50 +208,65 @@ public class ApplicationLayer extends JFrame {
    // id
     // 엔트리 추가, 수정, 삭제, 만료 된 경우
    static void ifTableChaged(int id, int index, int interfaceNumber){
-       if( id == 0 ){
-           // 새로 추가 된 경우
-           // 이 경우 index는 현재 라우팅 테이블 엔트리 개수
-           routingIndex = index;
-           m_IPLayer_1.setRoutingIndex(routingIndex);
-           m_IPLayer_2.setRoutingIndex(routingIndex);
-           m_RIPLayer_1.setRoutingIndex(routingIndex);
-           m_RIPLayer_2.setRoutingIndex(routingIndex);
+           if (id == 0) {
+               // 새로 추가 된 경우
+               // 이 경우 index는 현재 라우팅 테이블 엔트리 개수
+               routingIndex = index;
+               m_IPLayer_1.setRoutingIndex(routingIndex);
+               m_IPLayer_2.setRoutingIndex(routingIndex);
+               m_RIPLayer_1.setRoutingIndex(routingIndex);
+               m_RIPLayer_2.setRoutingIndex(routingIndex);
 
-           StaticRoutingList.add(byte2IP(routingTable[routingIndex-1].getDestination()) + "  "
-                   + byte2IP(routingTable[routingIndex-1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex-1].getGateway())
-                   + "  " + routingTable[routingIndex-1].getFlag() + "  " + routingTable[routingIndex-1].getInterface() + "  " + routingTable[routingIndex-1].getMetric());
+               StaticRoutingList.add(byte2IP(routingTable[routingIndex - 1].getDestination()) + "  "
+                       + byte2IP(routingTable[routingIndex - 1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex - 1].getGateway())
+                       + "  " + routingTable[routingIndex - 1].getFlag() + "  " + routingTable[routingIndex - 1].getInterface() + "  " + routingTable[routingIndex - 1].getMetric());
 
-       }else if ( id == 1 ){
-           // 엔트리 정보가 변경된 경우
-           // 바뀐 index가 넘어온다.
-            StaticRoutingList.replaceItem(byte2IP(routingTable[routingIndex-1].getDestination()) + "  "
-                    + byte2IP(routingTable[routingIndex-1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex-1].getGateway())
-                    + "  " + routingTable[routingIndex-1].getFlag() + "  " + routingTable[routingIndex-1].getInterface() + "  " + routingTable[routingIndex-1].getMetric(), index);
-       }else if ( id == 2 ){
-           // message를 받아서, 이미 routing table에서 삭제가 된 경우
-           // 인덱스 개수 업데이트하고,
-           StaticRoutingList.remove(index);
-           routingIndex--;
-           m_IPLayer_1.setRoutingIndex(routingIndex);
-           m_IPLayer_2.setRoutingIndex(routingIndex);
-           m_RIPLayer_1.setRoutingIndex(routingIndex);
-           m_RIPLayer_2.setRoutingIndex(routingIndex);
+           } else if (id == 1) {
+               // 엔트리 정보가 변경된 경우
+               // 바뀐 index가 넘어온다.
+               StaticRoutingList.replaceItem(byte2IP(routingTable[routingIndex - 1].getDestination()) + "  "
+                       + byte2IP(routingTable[routingIndex - 1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex - 1].getGateway())
+                       + "  " + routingTable[routingIndex - 1].getFlag() + "  " + routingTable[routingIndex - 1].getInterface() + "  " + routingTable[routingIndex - 1].getMetric(), index);
+           } else if (id == 2) {
+               // message를 받아서, 이미 routing table에서 삭제가 된 경우
+               // 인덱스 개수 업데이트하고,
 
-       }else if ( id == 3 ){
-           // 만료가 되어 삭제 될 경우
-           // 만료 된 다면, routing 테이블에서 삭제해야하고, GUI 에서도 삭제해야하고
-           for ( int j = index; j < routingIndex-1 ; j++)
-               routingTable[j] = routingTable[j+1];
-           routingTable[routingIndex-1] = null;
+               StaticRoutingList.remove(index);
 
-           StaticRoutingList.remove(index);
+               m_IPLayer_1.setRoutingIndex(routingIndex);
+               m_IPLayer_2.setRoutingIndex(routingIndex);
+               m_RIPLayer_1.setRoutingIndex(routingIndex);
+               m_RIPLayer_2.setRoutingIndex(routingIndex);
 
-           routingIndex--;
-           m_IPLayer_1.setRoutingIndex(routingIndex);
-           m_IPLayer_2.setRoutingIndex(routingIndex);
-           m_RIPLayer_1.setRoutingIndex(routingIndex);
-           m_RIPLayer_2.setRoutingIndex(routingIndex);
-       }
+           } else if (id == 3) {
+               // 만료가 되어 삭제 될 경우
+               // 만료 된 다면, routing 테이블에서 삭제해야하고, GUI 에서도 삭제해야하고
+
+               for (int j = index; j < routingIndex - 1; j++) {
+                   routingTable[j] = routingTable[j + 1];
+                   routingTable[j].setRT_Index(j);
+               }
+
+               routingTable[routingIndex - 1] = null;
+               routingIndex--;
+
+               StaticRoutingList.remove(index);
+
+               m_IPLayer_1.setRoutingIndex(routingIndex);
+               m_IPLayer_2.setRoutingIndex(routingIndex);
+               m_RIPLayer_1.setRoutingIndex(routingIndex);
+               m_RIPLayer_2.setRoutingIndex(routingIndex);
+
+           } else if (id == 4) {
+               StaticRoutingList.replaceItem(byte2IP(routingTable[index].getDestination()) + "  "
+                       + byte2IP(routingTable[index].getNetMask()) + "  " + byte2IP(routingTable[index].getGateway())
+                       + "  " + routingTable[index].getFlag() + "  " + routingTable[index].getInterface() + "  " + routingTable[index].getMetric(), index);
+               if (interfaceNumber == 0)
+                   m_RIPLayer_2.sendUnreachable(index);
+               else
+                   m_RIPLayer_1.sendUnreachable(index);
+           }
+
    }
 
    static class Chat_Send_Thread implements Runnable {
@@ -628,7 +643,7 @@ public class ApplicationLayer extends JFrame {
 	                     routingTable[j] = temp;
 	                  }
 	               }*/
-	            StaticRoutingList.addItem(byte2IP(tempDestination) + "  " 
+	            StaticRoutingList.add(byte2IP(tempDestination) + "  "
 	             + byte2IP(tempNetmask) + "  " + byte2IP(tempGateway)
 	             + "  " + flag + "  " + interface_box.getText() + "  " + routingTable[routingIndex].getMetric());
 	            routingIndex++;
