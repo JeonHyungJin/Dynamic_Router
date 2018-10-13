@@ -144,10 +144,20 @@ public class IPLayer extends BaseLayer {
 			frame_src_ip[1] = data[13];
 			frame_src_ip[2] = data[14];
 			frame_src_ip[3] = data[15];
+			System.out.println("--------------- IP -------------------");
+			for( int i = 0; i<data.length ; i++){
+				if ( i % 8 == 0)
+					System.out.println();
+				System.out.printf("%x ", data[i]);
+
+			}
+			System.out.println();
+			System.out.println("--------------------------------------");
 
 			byte[] udpData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
 
 			((UDPLayer)this.getUpperLayer()).receiveUDP(udpData, frame_src_ip);
+
 		}else{
 			// 데이터
 			System.arraycopy(data, 0, ip_data, 0, data.length);

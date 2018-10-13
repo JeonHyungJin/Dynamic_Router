@@ -71,7 +71,6 @@ public class RoutingTable {
          // 게이트 웨이를 타고 가야만 만날수 있는 경우
          // 180초 타이머 돌리기
          expiration_timer = new Timer();
-         garbage_timer = new Timer();
          expiration_task = new TimerTask() {
             @Override
             public void run() {
@@ -80,7 +79,10 @@ public class RoutingTable {
                   // sending
                   // 반대쪽 으로 보내기인데
                // 정보 변경
+               RT_state = -1;
                   ApplicationLayer.ifTableChaged(4, RT_Index, RT_interface);
+
+               garbage_timer = new Timer();
                garbage_timer.schedule(garbage_task,120000, 120000);
                expiration_timer.cancel();
             }
@@ -224,8 +226,16 @@ public class RoutingTable {
    }
 
    public void restartExpireTimer() {
-      this.garbage_task.cancel();
-      this.expiration_timer.cancel();
-      expiration_timer.schedule(expiration_task,180000, 180000);
+      if( RT_state == -1 ){
+         // 지울려 하는데 패킷 도착한 경우
+         RT_state = 0;
+         this.garbage_timer.cancel();
+         expiration_timer = new Timer();
+         expiration_timer.schedule(expiration_task,180000, 180000);
+      }else{
+         this.expiration_timer.cancel();
+         expiration_timer = new Timer();
+         expiration_timer.schedule(expiration_task,180000, 180000);
+      }
    }
 }
