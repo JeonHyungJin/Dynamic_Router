@@ -645,7 +645,7 @@ public class ApplicationLayer extends JFrame {
 
    public ApplicationLayer() {
       setTitle(
-            "Static Router");
+            "Dynamic Router");
       setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
       setBounds(100, 100, 735, 605);
       contentPane = new JPanel();
