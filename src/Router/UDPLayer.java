@@ -41,7 +41,8 @@ public class UDPLayer extends BaseLayer {
         //((IPLayer)this.getUnderLayer()).ip_destinationIP;
         //zero = (byte)0x00;
         //protocol = (byte)0x11;
-        //udp_length
+        //udp_length]
+        //////////////////////////////////////////////////////////////// W
         byte[] checksumFirst = new byte[1]; //굳이 배열안써도 될듯.
         byte[] checksumSecond = new byte[1];
         byte[] checksum = new byte[2];
@@ -76,21 +77,21 @@ public class UDPLayer extends BaseLayer {
         checksumSecond[0] += udp_length[1];
 
         //UDP Data
-        for(int i = 0; i< data.length; i = i+2){
-            checksumFirst[0] += data[i]; //홀수 인덱스끼리 더한다.
-            checksumSecond[0] += data[i+1]; //짝수 인덱스끼리 더한다.
+        for(int i = 1; i< data.length; i = i+2){
+            checksumFirst[0] += data[i-1]; //홀수 인덱스끼리 더한다.
+            checksumSecond[0] += data[i]; //짝수 인덱스끼리 더한다.
         }
 
         //보수를 취한다.
         checksum[0] = (byte)(~checksumFirst[0]);
         checksum[1] = (byte)(~checksumSecond[0]);
 
-        /*
-            그냥 보수취하는게 이상하긴 하지만 일단 pdf에 나와있는대로 했음.
-        */
+
+         //   그냥 보수취하는게 이상하긴 하지만 일단 pdf에 나와있는대로 했음.
+
 
         return checksum; //체크섬 반환
-
+//////////////////////////////////////////////////////////////////////////// N
 
 //        SHA-512암호화
 //        MessageDigest digest;
@@ -207,7 +208,7 @@ public class UDPLayer extends BaseLayer {
         for (int i = 0; i < length; i++)
             udp_data[i + UDP_HEAD_SIZE] = data[i];
 
-
+        System.out.println("가즈아~~~~~~~~~");
         if (((IPLayer) this.getUnderLayer()).sendUDP(udp_data)) {
             return true;
         } else

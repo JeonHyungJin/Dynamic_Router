@@ -84,6 +84,7 @@ public class IPLayer extends BaseLayer {
 		// 내가 있는 네트워크의 라우터로 보내면 된다.
 		// destination
 		int check = 0;
+		System.out.println("크ㅇ하하하 거의 왔따~~~ interfaceNum : " + interfaceNumber);
 		for (int i = routingIndex -1 ; i >= 0; i--) {
 			byte[] destination = routingTable[i].getDestination();
 			for (int j = 0; j < 4; j++) {
@@ -111,6 +112,7 @@ public class IPLayer extends BaseLayer {
 					ip_data[k+ IP_HEAD_SIZE] = data[k];
 
 				// 바로 센딩
+
 				return ((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway() );
 			}
 		}

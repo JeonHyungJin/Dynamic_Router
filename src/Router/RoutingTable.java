@@ -43,6 +43,10 @@ public class RoutingTable {
    }
 
    public RoutingTable(byte[] desIP, byte[] netmaskIP, byte[] gatewayIP, Flag flag, int interfaceNumber, int index, int metric) {
+      RT_des_IP = new byte[RT_DES_SIZE];
+      RT_netmask_IP = new byte[RT_NETMASK_SIZE];
+      RT_gateway_IP = new byte[RT_GATEWAY_SIZE];
+      RT_flag = Flag.NONE;
 
       System.arraycopy(desIP, 0, RT_des_IP, 0, 4);
       System.arraycopy(netmaskIP, 0, RT_netmask_IP, 0, 4);
@@ -67,7 +71,7 @@ public class RoutingTable {
          // 게이트 웨이를 타고 가야만 만날수 있는 경우
          // 180초 타이머 돌리기
          expiration_timer = new Timer();
-
+         garbage_timer = new Timer();
          expiration_task = new TimerTask() {
             @Override
             public void run() {
@@ -76,8 +80,8 @@ public class RoutingTable {
                   // sending
                   // 반대쪽 으로 보내기인데
                // 정보 변경
-                  ApplicationLayer.ifTableChaged(1, RT_Index, RT_interface);
-               garbage_timer.schedule(garbage_task,0, 120000);
+                  ApplicationLayer.ifTableChaged(4, RT_Index, RT_interface);
+               garbage_timer.schedule(garbage_task,120000, 120000);
                expiration_timer.cancel();
             }
          };
@@ -92,7 +96,7 @@ public class RoutingTable {
             }
          };
 
-         expiration_timer.schedule(expiration_task,0, 180000);
+         expiration_timer.schedule(expiration_task,180000, 180000);
       }else{
          this.expiration_timer = null;
          this.expiration_task = null;
@@ -222,6 +226,6 @@ public class RoutingTable {
    public void restartExpireTimer() {
       this.garbage_task.cancel();
       this.expiration_timer.cancel();
-      expiration_timer.schedule(expiration_task,0, 180000);
+      expiration_timer.schedule(expiration_task,180000, 180000);
    }
 }
