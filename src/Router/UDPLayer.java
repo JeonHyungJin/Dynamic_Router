@@ -1,8 +1,8 @@
 package Router;
 
-//import java.security.MessageDigest;
-//import java.security.NoSuchAlgorithmException;
-//import java.util.Arrays;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Arrays;
 
 public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 사용하는 암호화를 이용하여 체크섬을 완료하였다.
     final static int UDP_HEAD_SIZE = 8;
@@ -47,23 +47,25 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         byte[] checksumSecond = new byte[1];
         byte[] checksum = new byte[2];
 
-        //Pseudo IPAddress
-        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[0];
-        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[2];
-        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[1];
-        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[3];
+        int length = data.length;
 
-        //Pseudo DestinationAddress
-        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[0];
-        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[2];
-        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[1];
-        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[3];
+//        //Pseudo IPAddress
+//        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[0];
+//        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[2];
+//        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[1];
+//        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[3];
+//
+//        //Pseudo DestinationAddress
+//        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[0];
+//        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[2];
+//        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[1];
+//        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[3];
 
         //Pseudo Protocol & udp_length
         checksumFirst[0] += (byte)0x00;
-        checksumFirst[0] += udp_length[0];
+        checksumFirst[0] += (byte) (((data.length + 8)) / 0xFF);;
         checksumSecond[0] += (byte)0x11; //Protocol
-        checksumSecond[0] += udp_length[1];
+        checksumSecond[0] += (byte) (((data.length + 8)) % 0xFF);;
 
 
         //UDP sourcePort & destinationPort
@@ -73,13 +75,17 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         checksumSecond[0] += udp_destinationPort[1];
 
         //UDP Length
-        checksumFirst[0] += udp_length[0];
-        checksumSecond[0] += udp_length[1];
+        checksumFirst[0] += (byte) (((data.length + 8)) / 0xFF);;
+        checksumSecond[0] += (byte) (((data.length + 8)) % 0xFF);;
 
         //UDP Data
-        for(int i = 1; i< data.length; i = i+2){
-            checksumFirst[0] += data[i-1]; //홀수 인덱스끼리 더한다.
-            checksumSecond[0] += data[i]; //짝수 인덱스끼리 더한다.
+        for(int i = 0; i< data.length; i = i+2){
+            if( i == data.length - 1){
+                checksumFirst[0] += data[i];
+            }else{
+                checksumFirst[0] += data[i]; //홀수 인덱스끼리 더한다.
+                checksumSecond[0] += data[i+1]; //짝수 인덱스끼리 더한다.
+            }
         }
 
         //보수를 취한다. 되네!^^
@@ -135,23 +141,26 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
     boolean receiveUDP(byte[] data, byte[] gateway) {
         System.out.println("여길 온다고?!");
         if (checkChecksum(data)) {
+            System.out.println("good!");
             byte[] dst_port = new byte[2];
             // byte-order 한번 고민쯤은~
             dst_port[0] = data[2];
             dst_port[1] = data[3];
 
             if (dst_port[0] == 0x02 && dst_port[1] == 0x08) {
+                System.out.println("rip receive");
                 // rip 프로토콜 인거~
                 byte[] dataRIP = new byte[data.length - UDP_HEAD_SIZE];
                 System.arraycopy(data, UDP_HEAD_SIZE, dataRIP, 0, dataRIP.length);
 
                 ((RIPLayer) this.getUpperLayer()).receiveRIP(dataRIP, gateway);
             }else{
+                System.out.println("rip 실패");
                 return false;
             }
         } else {
             // checksum 오류 맨~
-
+            System.out.println("checksum 실패");
             return false; //오류면 버린다(?)
         }
         return true;
@@ -161,6 +170,17 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         // 수신 시 !
         byte[] noheaderData = new byte[data.length - UDP_HEAD_SIZE];
         System.arraycopy(data, 8, noheaderData, 0, noheaderData.length); //짤라서
+
+        System.out.println("--------------- UDP -------------------");
+        for( int i = 0; i<noheaderData.length ; i++){
+            if( i % 8 ==0 )
+                System.out.println();
+            System.out.printf("%x ", noheaderData[i]);
+
+        }
+        System.out.println();
+        System.out.println("--------------------------------------");
+
         byte[] checkingChecksum = new byte[2];
         checkingChecksum[0] = makeChecksum(noheaderData)[0];
         checkingChecksum[1] = makeChecksum(noheaderData)[1];
@@ -170,6 +190,9 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         dst_checksum[1] = data[7];
         //받은 패킷에 대한 체크썸.
         // now check the checksum;
+        System.out.printf("들어온 checksum : %x %x \n", dst_checksum[0], dst_checksum[1]);
+        System.out.printf("해석한 checksum : %x %x \n", checkingChecksum[0], checkingChecksum[1]);
+
         if (checkingChecksum[0] == dst_checksum[0] && checkingChecksum[1] == dst_checksum[1]) { //비교한다
             return true;
         } else {

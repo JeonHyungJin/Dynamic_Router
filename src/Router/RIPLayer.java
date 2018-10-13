@@ -49,7 +49,9 @@ public class RIPLayer extends BaseLayer {
     public void receiveRIP(byte[] dataRIP, byte[] gateway) {
         // TODO Auto-generated method stub
         // table 업데이트
+
             if (dataRIP[0] == 0x01) {
+                System.out.println("request");
                 // request
                 // 요청한 라우터에게 entire routing table을 보낸다.
                 // 1. request에 대한 response - 들어온 곳
@@ -116,6 +118,7 @@ public class RIPLayer extends BaseLayer {
 
                 ((UDPLayer) this.getUnderLayer()).sendRIP(rip_message);
             } else if (dataRIP[0] == 0x02) {
+                System.out.println("response");
                 // response
                 // 2. response에 대한 response
 
@@ -134,7 +137,7 @@ public class RIPLayer extends BaseLayer {
                 byte[] temp_message = new byte[entry_count * 20];
                 byte[] temp_other_rip_message = new byte[entry_count * 20];
 
-
+                System.out.println("entry_count : " + entry_count);
                 for (int i = 0; i < entry_count; i++) {
                     // 들어온 엔트리 알고리즘에 맞춰 테이블 업데이트.
                     System.arraycopy(dataRIP, 4 + 20 * i + 4, networkAddress, 0, networkAddress.length);
