@@ -9,9 +9,10 @@ public class RIPLayer extends BaseLayer {
     byte[] rip_message;
     byte[] ip_sourceIP = new byte[4];
     RoutingTable[] routingTable;
+
     private int routingIndex;
 
-    int interfaceNumber;
+    int interfaceNumber = 0;
     RIPLayer otherRIPLayer;
 
     byte[] max_hop = {(byte)0x00, 0x00,0x00, 0x10};
@@ -20,6 +21,9 @@ public class RIPLayer extends BaseLayer {
         this.routingTable = routingTable;
     }
 
+    public void setInterfaceNumber(int interfaceNumber) {
+        this.interfaceNumber = interfaceNumber;
+    }
 
     public RIPLayer(String layerName) {
         super(layerName);
@@ -32,6 +36,10 @@ public class RIPLayer extends BaseLayer {
 
     public void setIp_sourceIP(byte[] ip_sourceIP) {
         this.ip_sourceIP = ip_sourceIP;
+    }
+
+    public void setRoutingIndex(int routingIndex) {
+        this.routingIndex = routingIndex;
     }
 
     public void setOtherRIPLayer(RIPLayer otherRIPLayer) {
@@ -94,6 +102,8 @@ public class RIPLayer extends BaseLayer {
                         System.arraycopy(ip_sourceIP, 0, rip_message, 4 + 20 * i + 12, 4);
                         System.arraycopy( max_hop, 0, rip_message, 4 + 20 * i + 16, 4);
                     } else{
+                        // expire timer 갱신
+                        routingTable[index].restartExpireTimer();
                         // 현재 나의 테이블 정보를 전달.
                         System.arraycopy(networkAddress, 0, rip_message, 4 + 20 * i + 4, 4);
                         System.arraycopy(routingTable[i].getNetMask(), 0, rip_message, 4 + 20 * i + 8, 4);
@@ -143,8 +153,10 @@ public class RIPLayer extends BaseLayer {
                 if ( index == -1 ) {
                     if( metric != 16) {
                         // 추가
-                        routingTable[routingIndex].setRoutingTable(networkAddress, netMask, nexthop, Flag.UG, interfaceNumber, routingIndex, metric + 1);
+                        routingTable[routingIndex] = new RoutingTable(networkAddress, netMask, nexthop, Flag.UG, interfaceNumber, routingIndex, metric + 1);
                         routingIndex++;
+                        ApplicationLayer.ifTableChaged( 0, routingIndex, interfaceNumber);
+
                         // 들온 곳에 보내는 경우
                         temp_message[20 * change_count + 1] = 0x0002;
                         temp_message[20 * change_count + 3] = 0x0001;
@@ -165,10 +177,13 @@ public class RIPLayer extends BaseLayer {
                         change_count++;
                     }
                 }else{
+                    // expire timer 갱신
+                    routingTable[index].restartExpireTimer();
+
                     int check_nextHop = 1;
                     // next_hop is the same
                     for( int j = 0; j < 4; j++){
-                        if (nexthop[j] != routingTable[routingIndex].getGateway()[j]) {
+                        if (nexthop[j] != routingTable[index].getGateway()[j]) {
                             check_nextHop = 0;
                             break;
                         }
@@ -177,6 +192,9 @@ public class RIPLayer extends BaseLayer {
                         // 기존 테이블 엔트리 게이트 웨이와 비교하여 보니 바로 옆에 친구가 보내온 작은 테이블 엔트리다.
                         if( metric != 16) {
                             routingTable[index].setRoutingTable(networkAddress, netMask, nexthop, Flag.UG, interfaceNumber, index, metric + 1);
+                            // 변화 되었으니 업데이트
+                            ApplicationLayer.ifTableChaged(1, index, interfaceNumber);
+
                             // 들온 곳에 보내는 경우
                             temp_message[20 * change_count + 1] = 0x0002;
                             temp_message[20 * change_count + 3] = 0x0001;
@@ -200,7 +218,10 @@ public class RIPLayer extends BaseLayer {
                             // 테이블 삭제와 주변(반대)에 전달.
                             for ( int j = i; j < routingIndex-1 ; j++)
                                 routingTable[j] = routingTable[j+1];
+                            routingTable[routingIndex-1] = null;
                             routingIndex--;
+
+                            ApplicationLayer.ifTableChaged(2, i, interfaceNumber);
 
                             // 들온 곳에 보내는 경우
                             temp_message[20 * change_count + 1] = 0x0002;
@@ -225,6 +246,8 @@ public class RIPLayer extends BaseLayer {
                         if( metric != 16 ){
                             if( routingTable[index].getMetric() > metric ){
                                 routingTable[index].setRoutingTable(networkAddress, netMask, nexthop, Flag.UG, interfaceNumber, index, metric + 1);
+                                // 변경
+                                ApplicationLayer.ifTableChaged(1, index, interfaceNumber);
 
                                 // 들온 곳에 보내는 경우
                                 temp_message[20 * change_count + 1] = 0x0002;
@@ -281,15 +304,43 @@ public class RIPLayer extends BaseLayer {
         }
     }
 
-    public void sendRIP(){
+    public void runTimers(){
         Timer timer = new Timer();
-        TimerTask timerTask = new TimerTask() {
+        TimerTask periodic_timer = new TimerTask() {
             @Override
             public void run() {
                 //주기적으로 실행되는 부분
+                byte[] timer_rip_message = new byte[ 4 + 20 * routingIndex ];
+
+                timer_rip_message[0] = 0x02;
+                timer_rip_message[1] = 0x02;
+                timer_rip_message[2] = 0x00;
+                timer_rip_message[3] = 0x00;
+
+                for (int i = 0; i < routingIndex; i++) {
+                    timer_rip_message[4 + 20 * i + 1] = 0x0002;
+                    timer_rip_message[4 + 20 * i + 3] = 0x0001;
+                    System.arraycopy(routingTable[i].getDestination(), 0, timer_rip_message, 4 + 20 * i + 4, 4);
+                    System.arraycopy(routingTable[i].getNetMask(), 0, timer_rip_message, 4 + 20 * i + 8, 4);
+
+                    if( routingTable[i].getInterface() == interfaceNumber ){
+                        // 나랑 연결된 곳으로 가야함.
+                        // hop : 16
+                        System.arraycopy(routingTable[i].getGateway(), 0, timer_rip_message, 4 + 20 * i + 12, 4);
+                        System.arraycopy(max_hop, 0, timer_rip_message, 4 + 20 * i + 16, 4);
+                    }else{
+                        // 그 반대 방향
+                        System.arraycopy(ip_sourceIP, 0, timer_rip_message, 4 + 20 * i + 12, 4);
+                        System.arraycopy(routingTable[i].getMetric(), 0, timer_rip_message, 4 + 20 * i + 16, 4);
+                    }
+                    // next h
+                }
+                // 전송~
+                ((UDPLayer)getUnderLayer()).sendRIP( timer_rip_message );
             }
         };
-        timer.schedule(timerTask,0,30000);  //sendRIP함수가 호출되면 0초후부터 run()함수 부분이 30초 마다 실행된다.
+        timer.schedule(periodic_timer,30000,30000);  //sendRIP함수가 호출되면 0초후부터 run()함수 부분이 30초 마다 실행된다.
+
 
         //router 들에게만
         // hum...
@@ -315,6 +366,7 @@ public class RIPLayer extends BaseLayer {
 
         // request 전송
         ((UDPLayer) this.getUnderLayer()).sendRIP(rip_message);
+        runTimers();
     }
 
     int findRoutingEntry(byte[] address) {
