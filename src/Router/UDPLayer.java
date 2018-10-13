@@ -1,10 +1,10 @@
 package Router;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
+//import java.security.MessageDigest;
+//import java.security.NoSuchAlgorithmException;
+//import java.util.Arrays;
 
-public class UDPLayer extends BaseLayer {
+public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 사용하는 암호화를 이용하여 체크섬을 완료하였다.
     final static int UDP_HEAD_SIZE = 8;
 
     // UDP_HEADER BBAAM;
@@ -81,7 +81,7 @@ public class UDPLayer extends BaseLayer {
             checksumSecond[0] += data[i+1]; //짝수 인덱스끼리 더한다.
         }
 
-        //보수를 취한다.
+        //보수를 취한다. 되네!^^
         checksum[0] = (byte)(~checksumFirst[0]);
         checksum[1] = (byte)(~checksumSecond[0]);
 
@@ -109,18 +109,22 @@ public class UDPLayer extends BaseLayer {
 //        return checksum; //checksum 리턴
     }
 
-    void setChecksum(byte[] checksum) { //checksum 헤더에 넣어요
+
+
+    void setChecksum(byte[] checksum) {
+        //checksum 헤더에 넣어요
         udp_checksum[0] = checksum[0];
         udp_checksum[1] = checksum[1];
     }
 
-    // length & checksum 나중쓰
+
     void setLength(byte[] data) {
-        if ((data.length + 8) < 255) { //이거 ㄹㅇ 개 애매 ㅇㅈ?
+        // 길이를 설정한다.
+        // data.length + 8 을 255 기준으로 2바이트로 나누어 저장한다.
+        if ((data.length + 8) < 255) { //확실쓰
             udp_length[0] = (byte) 0x00;
             udp_length[1] = (byte) ((data.length + 8) & 0xFF);
-            //udp_length 출력해보면 10진수로 출력되는데 이게 과연 맞는 것 인가?
-        } else {    //여기도 애매 ㅇㅈ?
+        } else {
             udp_length[0] = (byte) (((data.length + 8)) / 0xFF);
             udp_length[1] = (byte) (((data.length + 8)) % 0xFF);
         }

@@ -56,26 +56,33 @@ public class IPLayer extends BaseLayer {
 		// TOS
 		ip_data[1] = 0x00;
 		// Total Packet Length ( 16 bit )
-		ip_data[2] = (byte) ip_data.length;
+		ip_data[2] = (byte) (ip_data.length / 0xFF);
+		ip_data[3] = (byte) (ip_data.length % 0xFF);
 		// identification
-
-		// flags
-
-		// 13 bit fragment offset
-
+		ip_data[4] = 0x00;
+		ip_data[5] = 0x01;
+		// 3 bit flags & 13 bit fragment offset
+		ip_data[6] = 0x00;
+		ip_data[7] = 0x00;
 		// TTL
-
+		ip_data[8] = 0x04;
 		// protocol
-		ip_data[9] = 0x11;
+		ip_data[9] = 0x11; //UDP protocol = 17
+		//checksum
+		for(int i = 0; i< 16; i= i+2){
+			ip_data[10] += ip_data[i];
+			ip_data[11] += ip_data[i+1];
+		}
+		//final checksum ( 보수 취하기 )
+		ip_data[10] = (byte)(~ip_data[10]);
+		ip_data[11] = (byte)(~ip_data[11]);
+
 
 		// Source
 		ip_data[12] = ip_sourceIP[0];
 		ip_data[13] = ip_sourceIP[1];
 		ip_data[14] = ip_sourceIP[2];
 		ip_data[15] = ip_sourceIP[3];
-
-		// header checksum
-		// 헤더 체크섬 만들기
 
 
 		// Destination 주소 설정은 RIPLayer에서 완료
