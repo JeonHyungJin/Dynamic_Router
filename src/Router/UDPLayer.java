@@ -132,18 +132,21 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
     }
 
     boolean receiveUDP(byte[] data, byte[] gateway) {
+        System.out.println("여길 온다고?!");
         if (checkChecksum(data)) {
             byte[] dst_port = new byte[2];
-            // byte-order 고민한번쯤은~
+            // byte-order 한번 고민쯤은~
             dst_port[0] = data[2];
             dst_port[1] = data[3];
 
             if (dst_port[0] == 0x02 && dst_port[1] == 0x08) {
                 // rip 프로토콜 인거~
                 byte[] dataRIP = new byte[data.length - UDP_HEAD_SIZE];
-                System.arraycopy(data, 8, dataRIP, 0, dataRIP.length);
+                System.arraycopy(data, UDP_HEAD_SIZE, dataRIP, 0, dataRIP.length);
 
                 ((RIPLayer) this.getUpperLayer()).receiveRIP(dataRIP, gateway);
+            }else{
+                return false;
             }
         } else {
             // checksum 오류 맨~

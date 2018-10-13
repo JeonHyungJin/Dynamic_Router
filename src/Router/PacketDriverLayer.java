@@ -56,7 +56,7 @@ public class PacketDriverLayer extends BaseLayer {
 	/* 네트워크 어뎁터 목록 생성 */
 	public void setAdapterList() {
 		int r = Pcap.findAllDevs(adapterList, errorBuffer);
-
+		System.out.println(adapterList.size());
 		// adapter가 존재하지 않을 경우
 		if (r == Pcap.NOT_OK || adapterList.isEmpty())
 			System.out.println("[Error] 네트워크 어댑터를 읽지 못하였습니다. Error : " + errorBuffer.toString());
@@ -76,6 +76,9 @@ public class PacketDriverLayer extends BaseLayer {
 		if (adapterObject.sendPacket(buffer) != Pcap.OK) {
 			System.err.println(adapterObject.getErr());
 			return false;
+		}else{
+
+			System.out.println("보냄.");
 		}
 		return true;
 	}
@@ -126,8 +129,9 @@ class Receive_Thread implements Runnable {
 					data = packet.getByteArray(0, packet.size()); // 패킷 크기를 알아냄
 
 					// 아래 조건 만족 시 upperLayer에 데이터 전송 / (0x0800 0x0806) ARP방식 IP방식 둘 중에서만
-					if ((data[12] == 8 && data[13] == 0) || (data[12] == 8 && data[13] == 6))
+					if ((data[12] == 8 && data[13] == 0) || (data[12] == 8 && data[13] == 6)) {
 						upperLayer.receive(data);
+					}
 				}
 			};
 			adapterObejct.loop(1000, packetHandler, "");
