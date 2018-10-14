@@ -224,8 +224,10 @@ public class RoutingTable {
       return count;		//매개변수로 들어온 netmaskIP중에서 255의 갯수를 반환
    }
 
-   public void restartExpireTimer() {
+   public void restartExpireTimer(int interfaceNumber) {
       if( RT_flag != Flag.UG)
+         return;
+      if( interfaceNumber != RT_interface)
          return;
       if( RT_state == -1 ){
          // 지울려 하는데 패킷 도착한 경우

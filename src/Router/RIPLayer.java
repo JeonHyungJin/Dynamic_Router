@@ -105,7 +105,8 @@ public class RIPLayer extends BaseLayer {
                         } else {
                             // expire timer 갱신
                             byte[] metric = intToByteArray(routingTable[i].getMetric());
-                            routingTable[index].restartExpireTimer();
+                            // 아래줄에서 오류 날수도 있음.. 테스트 상황이 없어서 아직 모르지만
+                            routingTable[index].restartExpireTimer(interfaceNumber);
                             // 현재 나의 테이블 정보를 전달.
                             System.arraycopy(networkAddress, 0, rip_message, 4 + 20 * i + 4, 4);
                             System.arraycopy(routingTable[i].getNetMask(), 0, rip_message, 4 + 20 * i + 8, 4);
@@ -152,6 +153,18 @@ public class RIPLayer extends BaseLayer {
                     // 16인 경우 - poison reverse
                     // 변화가 생겼을 시, 즉각 전송
                     // 30초마다는 전체 전송,
+                    // 전송된게 디폴트면 추가 안함.
+                    byte[] default_entry = {0x00,0x00,0x00,0x00};
+                    int default_way = 1;
+                    for (int j = 0; j < 4; j++) {
+                        if (default_entry[j] != networkAddress[j]) {
+                            default_way = 0;
+                            break;
+                        }
+                    }
+                    if( default_way != 0 )
+                        continue;
+
                     int index = findRoutingEntry(networkAddress);
                     System.out.println("인덱스:" + index);
                     if (index == -1) {
@@ -184,7 +197,7 @@ public class RIPLayer extends BaseLayer {
                         }
                     } else {
                         // expire timer 갱신
-                        routingTable[index].restartExpireTimer();
+                        routingTable[index].restartExpireTimer(interfaceNumber);
 
                         int check_nextHop = 1;
                         // next_hop is the same
@@ -290,6 +303,8 @@ public class RIPLayer extends BaseLayer {
 
                 }
 
+
+            }
                 System.out.println("바뀐 엔트리 개수 : " + change_count);
 
                 if (change_count != 0) {
@@ -313,7 +328,6 @@ public class RIPLayer extends BaseLayer {
                     ((UDPLayer) this.getUnderLayer()).sendRIP(rip_message);
                     ((UDPLayer) otherRIPLayer.getUnderLayer()).sendRIP(other_rip_message);
                 }
-            }
         }
     }
 
