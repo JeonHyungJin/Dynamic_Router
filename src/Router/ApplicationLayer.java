@@ -224,9 +224,9 @@ public class ApplicationLayer extends JFrame {
            } else if (id == 1) {
                // 엔트리 정보가 변경된 경우
                // 바뀐 index가 넘어온다.
-               StaticRoutingList.replaceItem(byte2IP(routingTable[routingIndex - 1].getDestination()) + "  "
-                       + byte2IP(routingTable[routingIndex - 1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex - 1].getGateway())
-                       + "  " + routingTable[routingIndex - 1].getFlag() + "  " + routingTable[routingIndex - 1].getInterface() + "  " + routingTable[routingIndex - 1].getMetric(), index);
+               StaticRoutingList.replaceItem(byte2IP(routingTable[index].getDestination()) + "  "
+                       + byte2IP(routingTable[index].getNetMask()) + "  " + byte2IP(routingTable[index ].getGateway())
+                       + "  " + routingTable[index].getFlag() + "  " + routingTable[index].getInterface() + "  " + routingTable[index].getMetric(), index);
            } else if (id == 2) {
                // message를 받아서, 이미 routing table에서 삭제가 된 경우
                // 인덱스 개수 업데이트하고,
@@ -921,8 +921,8 @@ public class ApplicationLayer extends JFrame {
 
       // 선택한 Interface 정보 설정
       for (int i = 0; m_PacketDriverLayer_1.getAdapterList().size() > i; i++) {
-         NIC_ComboBox.addItem(m_PacketDriverLayer_1.getAdapterList().get(i).getDescription());
-         NIC_ComboBox2.addItem(m_PacketDriverLayer_1.getAdapterList().get(i).getDescription());
+         NIC_ComboBox.addItem(m_PacketDriverLayer_1.getAdapterList().get(i).getDescription()+i);
+         NIC_ComboBox2.addItem(m_PacketDriverLayer_1.getAdapterList().get(i).getDescription()+i);
       }
 
       

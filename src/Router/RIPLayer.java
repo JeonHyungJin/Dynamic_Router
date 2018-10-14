@@ -179,6 +179,8 @@ public class RIPLayer extends BaseLayer {
                             System.arraycopy(intToByteArray(metric + 1), 0, temp_other_rip_message, 20 * change_count + 16, 4);
 
                             change_count++;
+                        }else{
+                            System.out.printf("%d.%d.%d.%d \n",networkAddress[0],networkAddress[1],networkAddress[2],networkAddress[3]);
                         }
                     } else {
                         // expire timer 갱신
@@ -198,7 +200,9 @@ public class RIPLayer extends BaseLayer {
                                 routingTable[index].setRoutingTable(networkAddress, netMask, nexthop, Flag.UG, interfaceNumber, index, metric + 1);
                                 // 변화 되었으니 업데이트
                                 ApplicationLayer.ifTableChaged(1, index, interfaceNumber);
-
+                                System.out.printf("network: %d.%d.%d.%d\n", networkAddress[0],networkAddress[1],networkAddress[2],networkAddress[3]);
+                                System.out.printf("network: %d.%d.%d.%d\n", netMask[0],netMask[1],netMask[2],netMask[3]);
+                                System.out.printf("network: %d.%d.%d.%d\n", nexthop[0],nexthop[1],nexthop[2],nexthop[3]);
                                 // 들온 곳에 보내는 경우
                                 temp_message[20 * change_count + 1] = 0x0002;
                                 temp_message[20 * change_count + 3] = 0x0001;
@@ -279,6 +283,8 @@ public class RIPLayer extends BaseLayer {
                             } else {
                                 // poison reverse 에 해당하는 경우
                                 // do nothing
+                                System.out.printf("poison network: %d.%d.%d.%d\n", networkAddress[0],networkAddress[1],networkAddress[2],networkAddress[3]);
+
                             }
                         }
 
@@ -301,8 +307,8 @@ public class RIPLayer extends BaseLayer {
                     other_rip_message[2] = 0x00;
                     other_rip_message[3] = 0x00;
 
-                    System.arraycopy(rip_message, 4, temp_message, 0, 20 * change_count);
-                    System.arraycopy(other_rip_message, 4, temp_other_rip_message, 0, 20 * change_count);
+                    System.arraycopy(temp_message, 0, rip_message, 4, 20 * change_count);
+                    System.arraycopy(temp_other_rip_message, 0, other_rip_message, 4, 20 * change_count);
 
                     ((UDPLayer) this.getUnderLayer()).sendRIP(rip_message);
                     ((UDPLayer) otherRIPLayer.getUnderLayer()).sendRIP(other_rip_message);
@@ -386,7 +392,7 @@ public class RIPLayer extends BaseLayer {
                 if (destination[j] != address[j]) {
                     check = 0;
                     break;
-                } else
+                } else  
                     check = 1;
             }
             if(check == 1){
