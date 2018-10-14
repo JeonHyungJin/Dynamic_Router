@@ -225,6 +225,8 @@ public class RoutingTable {
    }
 
    public void restartExpireTimer() {
+      if( RT_flag != Flag.UG)
+         return;
       if( RT_state == -1 ){
          // 지울려 하는데 패킷 도착한 경우
          RT_state = 0;
