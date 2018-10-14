@@ -973,7 +973,7 @@ public class ApplicationLayer extends JFrame {
       JPanel StaticRoutingPanel = new JPanel();
       StaticRoutingPanel.setLayout(null);
       StaticRoutingPanel.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"),
-            "Static Routing Table", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+            "Dynamic Routing Table", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
       StaticRoutingPanel.setBounds(10, 10, 420, 440);
       contentPane.add(StaticRoutingPanel);
 
