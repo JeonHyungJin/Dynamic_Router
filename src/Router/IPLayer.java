@@ -156,14 +156,47 @@ public class IPLayer extends BaseLayer {
 
 			byte[] udpData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
 
-			((UDPLayer)this.getUpperLayer()).receiveUDP(udpData, frame_src_ip);
+			if(!((UDPLayer)this.getUpperLayer()).receiveUDP(udpData, frame_src_ip)) {
+                int check = 0;
+                for (int i = routingIndex - 1; i >= 0; i--) {
+                    byte[] destination = routingTable[i].getDestination();
+                    for (int j = 0; j < 4; j++) {
+                        byte[] netMask = routingTable[i].getNetMask();
+                        if (destination[j] != (netMask[j] & frame_dst_ip[j])) {
+                            check = 0;
+                            break;
+                        } else
+                            check = 1;
+                    }
+                    if (check == 1) {
+                        if (interfaceNumber == routingTable[i].getInterface()) {
+                            ((ARPLayer) this.getUnderLayer()).send(data, routingTable[i].getGateway());
 
+                        } else {
+                            ((ARPLayer) otherIPLayer.getUnderLayer()).send(data, routingTable[i].getGateway());
+                        }
+                        return true;
+                    }
+                }
+            }
 		}else{
 			// 데이터
 			System.arraycopy(data, 0, ip_data, 0, data.length);
 
 			int check = 0;
 			// routing table 확인하여 알맞은 인터페이스에 연결
+            for (int j = 0; j < 4; j++) {
+                if (ip_sourceIP[j] != frame_dst_ip[j]) {
+                    check = 0;
+                    break;
+                } else
+                    check = 1;
+            }
+
+            if(check==1)
+                return true;
+
+
 			for (int i = routingIndex -1 ; i >= 0; i--) {
 				byte[] destination = routingTable[i].getDestination();
 				for (int j = 0; j < 4; j++) {
@@ -181,28 +214,9 @@ public class IPLayer extends BaseLayer {
 					} else {
 						((ARPLayer) otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
 					}
-
-
-					/*if( routingTable[i].getFlag() == Flag.UG) { // 갈곳이 Gateway, 즉 router를 한번더 거쳐야한다면, gateway 주소로
-						if (interfaceNumber == routingTable[i].getInterface()) {
-							((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
-
-						} else {
-							((ARPLayer) otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
-						}
-					}
-					else if( routingTable[i].getFlag() == Flag.U || routingTable[i].getFlag() == Flag.UH){ // 아니면, 직접 연결된 상태니까, 바로 목적지로 전송
-						if (interfaceNumber == routingTable[i].getInterface()) {
-							((ARPLayer) this.getUnderLayer()).send(ip_data, frame_dst_ip);
-
-						} else {
-							((ARPLayer) otherIPLayer.getUnderLayer()).send(ip_data, frame_dst_ip);
-						}
-					}*/
-					// 체크가 1일때 인터페이스 번호가 라우팅 테이블에 있는 인터페이스라면 현재 거의 하위레이어에 보내고
-					// 아니면 다른 아이피레이어의 하위 레이어로 보낸다. //라우터의 다른부분.
 					return true;
 				}else{
+                    System.out.printf("%d.%d.%d.%d \n",destination[0],destination[1],destination[2],destination[3] );
 					System.out.println("테이블에 저장되지 않은 목적지");
 				}
 			}
