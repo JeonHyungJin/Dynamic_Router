@@ -146,7 +146,7 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
             // byte-order 한번 고민쯤은~
             dst_port[0] = data[2];
             dst_port[1] = data[3];
-
+// 520
             if (dst_port[0] == 0x02 && dst_port[1] == 0x08) {
                 System.out.println("rip receive");
                 // rip 프로토콜 인거~

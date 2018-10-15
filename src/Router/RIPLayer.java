@@ -104,12 +104,12 @@ public class RIPLayer extends BaseLayer {
                             System.arraycopy(max_hop, 0, rip_message, 4 + 20 * i + 16, 4);
                         } else {
                             // expire timer 갱신
-                            byte[] metric = intToByteArray(routingTable[i].getMetric());
+                            byte[] metric = intToByteArray(routingTable[index].getMetric());
                             // 아래줄에서 오류 날수도 있음.. 테스트 상황이 없어서 아직 모르지만
                             routingTable[index].restartExpireTimer(interfaceNumber);
                             // 현재 나의 테이블 정보를 전달.
                             System.arraycopy(networkAddress, 0, rip_message, 4 + 20 * i + 4, 4);
-                            System.arraycopy(routingTable[i].getNetMask(), 0, rip_message, 4 + 20 * i + 8, 4);
+                            System.arraycopy(routingTable[index].getNetMask(), 0, rip_message, 4 + 20 * i + 8, 4);
                             // next h
                             System.arraycopy(ip_sourceIP, 0, rip_message, 4 + 20 * i + 12, 4);
                             System.arraycopy(metric, 0, rip_message, 4 + 20 * i + 16, 4);
@@ -182,6 +182,8 @@ public class RIPLayer extends BaseLayer {
                             // next h
                             System.arraycopy(nexthop, 0, temp_message, 20 * change_count + 12, 4);
                             System.arraycopy(max_hop, 0, temp_message, 20 * change_count + 16, 4);
+
+
                             // 그 반대에 보내는 경우
                             temp_other_rip_message[20 * change_count + 1] = 0x0002;
                             temp_other_rip_message[20 * change_count + 3] = 0x0001;
