@@ -157,7 +157,19 @@ public class IPLayer extends BaseLayer {
 			byte[] udpData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
 
 			if(!((UDPLayer)this.getUpperLayer()).receiveUDP(udpData, frame_src_ip)) {
-                int check = 0;
+				int check = 0;
+				// routing table 확인하여 알맞은 인터페이스에 연결
+				for (int j = 0; j < 4; j++) {
+					if (ip_sourceIP[j] != frame_dst_ip[j]) {
+						check = 0;
+						break;
+					} else
+						check = 1;
+				}
+
+				if(check==1)
+					return true;
+
                 for (int i = routingIndex - 1; i >= 0; i--) {
                     byte[] destination = routingTable[i].getDestination();
                     for (int j = 0; j < 4; j++) {
