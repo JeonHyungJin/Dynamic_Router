@@ -97,6 +97,7 @@ public class IPLayer extends BaseLayer {
 		// destination
 		int check = 0;
 		System.out.println("크ㅇ하하하 거의 왔따~~~ interfaceNum : " + interfaceNumber);
+
 		for (int i = routingIndex -1 ; i >= 0; i--) {
 			byte[] destination = routingTable[i].getDestination();
 			for (int j = 0; j < 4; j++) {
@@ -140,78 +141,90 @@ public class IPLayer extends BaseLayer {
 		frame_dst_ip[1] = data[17];
 		frame_dst_ip[2] = data[18];
 		frame_dst_ip[3] = data[19];
-		if(checkCheckSum(data)) {
-			if (data[9] == 0x11) {
-				// UDP 레이어
-				byte[] frame_src_ip = new byte[4];
 
-				frame_src_ip[0] = data[12];
-				frame_src_ip[1] = data[13];
-				frame_src_ip[2] = data[14];
-				frame_src_ip[3] = data[15];
-				System.out.println("--------------- IP -------------------");
-				for (int i = 0; i < data.length; i++) {
-					if (i % 8 == 0)
-						System.out.println();
-					System.out.printf("%x ", data[i]);
-				}
-				System.out.println();
-				System.out.println("--------------------------------------");
+		if( data[9] == 0x11 ){
+			// UDP 레이어
+			byte[] frame_src_ip = new byte[4];
 
-				byte[] udpData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
+			frame_src_ip[0] = data[12];
+			frame_src_ip[1] = data[13];
+			frame_src_ip[2] = data[14];
+			frame_src_ip[3] = data[15];
+			System.out.println("--------------- IP -------------------");
+			for( int i = 0; i<data.length ; i++){
+				if ( i % 8 == 0)
+					System.out.println();
+				System.out.printf("%x ", data[i]);
 
-				((UDPLayer) this.getUpperLayer()).receiveUDP(udpData, frame_src_ip);
+			}
+			System.out.println();
+			System.out.println("--------------------------------------");
 
-			} else {
-				// 데이터
-				System.arraycopy(data, 0, ip_data, 0, data.length);
+			byte[] udpData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
 
-				int check = 0;
-				// routing table 확인하여 알맞은 인터페이스에 연결
-				for (int i = routingIndex - 1; i >= 0; i--) {
-					byte[] destination = routingTable[i].getDestination();
-					for (int j = 0; j < 4; j++) {
-						byte[] netMask = routingTable[i].getNetMask();
-						if (destination[j] != (netMask[j] & frame_dst_ip[j])) {
-							check = 0;
-							break;
-						} else
-							check = 1;
-					} //서브넷 마스크와 아이피를 앤드 연산을 하고 그것이 데스티네이션과 같지않다면 체크가 0, 있으면 1 로 한다.
-					if (check == 1) {
-						if (interfaceNumber == routingTable[i].getInterface()) {
-							((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
+			if(!((UDPLayer)this.getUpperLayer()).receiveUDP(udpData, frame_src_ip, frame_dst_ip)) {
+        int check = 0;
+        for (int i = routingIndex - 1; i >= 0; i--) {
+          byte[] destination = routingTable[i].getDestination();
+          for (int j = 0; j < 4; j++) {
+                byte[] netMask = routingTable[i].getNetMask();
+                if (destination[j] != (netMask[j] & frame_dst_ip[j])) {
+                  check = 0;
+                   break;
+                } else
+                   check = 1;
+                }
+                if (check == 1) {
+                        if (interfaceNumber == routingTable[i].getInterface()) {
+                            ((ARPLayer) this.getUnderLayer()).send(data, routingTable[i].getGateway());
 
-						} else {
-							((ARPLayer) otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
-						}
+                        } else {
+                            ((ARPLayer) otherIPLayer.getUnderLayer()).send(data, routingTable[i].getGateway());
+                        }
+                        return true;
+                    }
+                }
+            }
+		}else{
+			// 데이터
+			System.arraycopy(data, 0, ip_data, 0, data.length);
+
+			int check = 0;
+			// routing table 확인하여 알맞은 인터페이스에 연결
+            for (int j = 0; j < 4; j++) {
+                if (ip_sourceIP[j] != frame_dst_ip[j]) {
+                    check = 0;
+                    break;
+                } else
+                    check = 1;
+            }
+
+            if(check==1)
+                return true;
 
 
-					/*if( routingTable[i].getFlag() == Flag.UG) { // 갈곳이 Gateway, 즉 router를 한번더 거쳐야한다면, gateway 주소로
-						if (interfaceNumber == routingTable[i].getInterface()) {
-							((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
-
-						} else {
-							((ARPLayer) otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
-						}
-					}
-					else if( routingTable[i].getFlag() == Flag.U || routingTable[i].getFlag() == Flag.UH){ // 아니면, 직접 연결된 상태니까, 바로 목적지로 전송
-						if (interfaceNumber == routingTable[i].getInterface()) {
-							((ARPLayer) this.getUnderLayer()).send(ip_data, frame_dst_ip);
-
-						} else {
-							((ARPLayer) otherIPLayer.getUnderLayer()).send(ip_data, frame_dst_ip);
-						}
-					}*/
-						// 체크가 1일때 인터페이스 번호가 라우팅 테이블에 있는 인터페이스라면 현재 거의 하위레이어에 보내고
-						// 아니면 다른 아이피레이어의 하위 레이어로 보낸다. //라우터의 다른부분.
-						return true;
+			for (int i = routingIndex -1 ; i >= 0; i--) {
+				byte[] destination = routingTable[i].getDestination();
+				for (int j = 0; j < 4; j++) {
+					byte[] netMask = routingTable[i].getNetMask();
+					if (destination[j] != (netMask[j] & frame_dst_ip[j])) {
+						check = 0;
+						break;
+					} else
+						check = 1;
+				} //서브넷 마스크와 아이피를 앤드 연산을 하고 그것이 데스티네이션과 같지않다면 체크가 0, 있으면 1 로 한다.
+				if (check == 1) {
+					if (interfaceNumber == routingTable[i].getInterface()) {
+						((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
 					} else {
-						System.out.println("테이블에 저장되지 않은 목적지");
+							((ARPLayer) otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
 					}
+					return true;
+				} else {
+						System.out.println("테이블에 저장되지 않은 목적지");
 				}
 			}
-		}
+    }
 
 		return false;
 	}
@@ -272,6 +285,25 @@ public class IPLayer extends BaseLayer {
 	public void setRoutingIndex(int routingIndex) {
 		this.routingIndex = routingIndex;
 	}
+
+	public byte[] getConnectedRouter(byte[] sourceIP){
+	    int check = 0;
+        for (int i = routingIndex - 1; i >= 0 && check != 1; i--) {
+            byte[] destination = routingTable[i].getDestination();
+            for (int j = 0; j < 4; j++) {
+                byte[] netMask = routingTable[i].getNetMask();
+                if (destination[j] != (netMask[j] & sourceIP[j])) {
+                    check = 0;
+                    break;
+                } else {
+                    check = 1;
+                }
+            }
+            if( check == 1)
+                return destination;
+        }
+	    return null;
+    }
 
 	public byte[] makeChecksum(byte[] data){
 		ip_checksum[0] += 0x45; //version, header_length
@@ -335,5 +367,4 @@ public class IPLayer extends BaseLayer {
 			return false;
 		}
 	}
-
 }

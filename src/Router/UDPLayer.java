@@ -32,7 +32,7 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
             udp_destinationPort[i] = destinationPort[i];
     }
 
-    public byte[] makeChecksum(byte[] data) {
+    public byte[] makeChecksum(byte[] data, byte[] sourceIP, byte[] destinationIP) {
         //지금은 데이터 관련해서 덧셈을 하여 체크섬을 만들었는데.
         //피디에프 확인 결과 가상 헤더에 관해서 IPAddress의 관련 바이트를 또한 더해야한다.
         //하지만 정확한 이해가 되지않아 주석만 달아 올립니다.
@@ -49,17 +49,17 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
 
         int length = data.length;
 
-//        //Pseudo IPAddress
-//        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[0];
-//        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[2];
-//        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[1];
-//        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_sourceIP[3];
-//
-//        //Pseudo DestinationAddress
-//        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[0];
-//        checksumFirst[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[2];
-//        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[1];
-//        checksumSecond[0] += ((IPLayer)this.getUnderLayer()).ip_destinationIP[3];
+        //Pseudo IPAddress
+        checksumFirst[0] += sourceIP[0];
+        checksumFirst[0] += sourceIP[2];
+        checksumSecond[0] += sourceIP[1];
+        checksumSecond[0] += sourceIP[3];
+
+        //Pseudo DestinationAddress
+        checksumFirst[0] += destinationIP[0];
+        checksumFirst[0] += destinationIP[2];
+        checksumSecond[0] += destinationIP[1];
+        checksumSecond[0] += destinationIP[3];
 
         //Pseudo Protocol & udp_length
         checksumFirst[0] += (byte)0x00;
@@ -138,9 +138,9 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
 
     }
 
-    boolean receiveUDP(byte[] data, byte[] gateway) {
+    boolean receiveUDP(byte[] data, byte[] sourceIP, byte[] destinationIP) {
         System.out.println("여길 온다고?!");
-        if (checkChecksum(data)) {
+        if (checkChecksum(data, sourceIP, destinationIP)) {
             System.out.println("good!");
             byte[] dst_port = new byte[2];
             // byte-order 한번 고민쯤은~
@@ -153,9 +153,9 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
                 byte[] dataRIP = new byte[data.length - UDP_HEAD_SIZE];
                 System.arraycopy(data, UDP_HEAD_SIZE, dataRIP, 0, dataRIP.length);
 
-                ((RIPLayer) this.getUpperLayer()).receiveRIP(dataRIP, gateway);
+                ((RIPLayer) this.getUpperLayer()).receiveRIP(dataRIP, sourceIP);
             }else{
-                System.out.println("rip 실패");
+                System.out.println("rip 아님");
                 return false;
             }
         } else {
@@ -166,7 +166,7 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         return true;
     }
 
-    boolean checkChecksum(byte[] data) {
+    boolean checkChecksum(byte[] data, byte[] sourceIP, byte[] destinationIP) {
         // 수신 시 !
         byte[] noheaderData = new byte[data.length - UDP_HEAD_SIZE];
         System.arraycopy(data, 8, noheaderData, 0, noheaderData.length); //짤라서
@@ -182,8 +182,8 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         System.out.println("--------------------------------------");
 
         byte[] checkingChecksum = new byte[2];
-        checkingChecksum[0] = makeChecksum(noheaderData)[0];
-        checkingChecksum[1] = makeChecksum(noheaderData)[1];
+        checkingChecksum[0] = makeChecksum(noheaderData, sourceIP, destinationIP)[0];
+        checkingChecksum[1] = makeChecksum(noheaderData, sourceIP, destinationIP)[1];
 
         byte[] dst_checksum = new byte[2]; //오리지널과
         dst_checksum[0] = data[6];
@@ -226,7 +226,8 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         udp_data[5] = udp_length[1];
 
         /*checksum을 udp_data header에 추가한다*/
-        setChecksum(makeChecksum(data));
+
+        setChecksum(makeChecksum(data, ((IPLayer)this.getUnderLayer()).ip_sourceIP, ((IPLayer)this.getUnderLayer()).getConnectedRouter(((IPLayer)this.getUnderLayer()).ip_sourceIP)));
         udp_data[6] = udp_checksum[0];
         udp_data[7] = udp_checksum[1];
 
