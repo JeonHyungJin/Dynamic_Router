@@ -9,6 +9,7 @@ public class IPLayer extends BaseLayer {
 	byte[] ip_sourceIP = new byte[4];
 	byte[] ip_destinationIP = new byte[4];
 	byte[] ip_data;
+	byte[] ip_checksum = new byte[2];
 
 	int interfaceNumber;
 
@@ -49,6 +50,7 @@ public class IPLayer extends BaseLayer {
 		int length = data.length;
 
 		ip_data = new byte[data.length + IP_HEAD_SIZE];
+
 		// ip checksum도 필요
 		// encapsulation
 		// version & IHL
@@ -74,6 +76,9 @@ public class IPLayer extends BaseLayer {
 			ip_data[11] += ip_data[i+1];
 		}
 		//final checksum ( 보수 취하기 )
+		ip_data[10] = makeChecksum(data)[0];
+		ip_data[11] = makeChecksum(data)[1];
+
 		ip_data[10] = (byte)(~ip_data[10]);
 		ip_data[11] = (byte)(~ip_data[11]);
 
@@ -135,52 +140,52 @@ public class IPLayer extends BaseLayer {
 		frame_dst_ip[1] = data[17];
 		frame_dst_ip[2] = data[18];
 		frame_dst_ip[3] = data[19];
+		if(checkCheckSum(data)) {
+			if (data[9] == 0x11) {
+				// UDP 레이어
+				byte[] frame_src_ip = new byte[4];
 
-		if( data[9] == 0x11 ){
-			// UDP 레이어
-			byte[] frame_src_ip = new byte[4];
+				frame_src_ip[0] = data[12];
+				frame_src_ip[1] = data[13];
+				frame_src_ip[2] = data[14];
+				frame_src_ip[3] = data[15];
+				System.out.println("--------------- IP -------------------");
+				for (int i = 0; i < data.length; i++) {
+					if (i % 8 == 0)
+						System.out.println();
+					System.out.printf("%x ", data[i]);
 
-			frame_src_ip[0] = data[12];
-			frame_src_ip[1] = data[13];
-			frame_src_ip[2] = data[14];
-			frame_src_ip[3] = data[15];
-			System.out.println("--------------- IP -------------------");
-			for( int i = 0; i<data.length ; i++){
-				if ( i % 8 == 0)
-					System.out.println();
-				System.out.printf("%x ", data[i]);
+				}
+				System.out.println();
+				System.out.println("--------------------------------------");
 
-			}
-			System.out.println();
-			System.out.println("--------------------------------------");
+				byte[] udpData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
 
-			byte[] udpData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
+				((UDPLayer) this.getUpperLayer()).receiveUDP(udpData, frame_src_ip);
 
-			((UDPLayer)this.getUpperLayer()).receiveUDP(udpData, frame_src_ip);
+			} else {
+				// 데이터
+				System.arraycopy(data, 0, ip_data, 0, data.length);
 
-		}else{
-			// 데이터
-			System.arraycopy(data, 0, ip_data, 0, data.length);
+				int check = 0;
+				// routing table 확인하여 알맞은 인터페이스에 연결
+				for (int i = routingIndex - 1; i >= 0; i--) {
+					byte[] destination = routingTable[i].getDestination();
+					for (int j = 0; j < 4; j++) {
+						byte[] netMask = routingTable[i].getNetMask();
+						if (destination[j] != (netMask[j] & frame_dst_ip[j])) {
+							check = 0;
+							break;
+						} else
+							check = 1;
+					} //서브넷 마스크와 아이피를 앤드 연산을 하고 그것이 데스티네이션과 같지않다면 체크가 0, 있으면 1 로 한다.
+					if (check == 1) {
+						if (interfaceNumber == routingTable[i].getInterface()) {
+							((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
 
-			int check = 0;
-			// routing table 확인하여 알맞은 인터페이스에 연결
-			for (int i = routingIndex -1 ; i >= 0; i--) {
-				byte[] destination = routingTable[i].getDestination();
-				for (int j = 0; j < 4; j++) {
-					byte[] netMask = routingTable[i].getNetMask();
-					if (destination[j] != (netMask[j] & frame_dst_ip[j])) {
-						check = 0;
-						break;
-					} else
-						check = 1;
-				} //서브넷 마스크와 아이피를 앤드 연산을 하고 그것이 데스티네이션과 같지않다면 체크가 0, 있으면 1 로 한다.
-				if (check == 1) {
-					if (interfaceNumber == routingTable[i].getInterface()) {
-						((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
-
-					} else {
-						((ARPLayer) otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
-					}
+						} else {
+							((ARPLayer) otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
+						}
 
 
 					/*if( routingTable[i].getFlag() == Flag.UG) { // 갈곳이 Gateway, 즉 router를 한번더 거쳐야한다면, gateway 주소로
@@ -199,15 +204,15 @@ public class IPLayer extends BaseLayer {
 							((ARPLayer) otherIPLayer.getUnderLayer()).send(ip_data, frame_dst_ip);
 						}
 					}*/
-					// 체크가 1일때 인터페이스 번호가 라우팅 테이블에 있는 인터페이스라면 현재 거의 하위레이어에 보내고
-					// 아니면 다른 아이피레이어의 하위 레이어로 보낸다. //라우터의 다른부분.
-					return true;
-				}else{
-					System.out.println("테이블에 저장되지 않은 목적지");
+						// 체크가 1일때 인터페이스 번호가 라우팅 테이블에 있는 인터페이스라면 현재 거의 하위레이어에 보내고
+						// 아니면 다른 아이피레이어의 하위 레이어로 보낸다. //라우터의 다른부분.
+						return true;
+					} else {
+						System.out.println("테이블에 저장되지 않은 목적지");
+					}
 				}
 			}
 		}
-
 
 		return false;
 	}
@@ -268,4 +273,68 @@ public class IPLayer extends BaseLayer {
 	public void setRoutingIndex(int routingIndex) {
 		this.routingIndex = routingIndex;
 	}
+
+	public byte[] makeChecksum(byte[] data){
+		ip_checksum[0] += 0x45; //version, header_length
+		ip_checksum[1] += 0x00; // TOS
+
+		// total_length
+		ip_checksum[0] += (data.length+8) / 256;
+		ip_checksum[1] += (data.length+8) % 256;
+
+		//identification
+		ip_checksum[0] += 0x00;
+		ip_checksum[1] += 0x01;
+
+		//flag & fragment offset
+		ip_checksum[0] += 0x00;
+		ip_checksum[1] += 0x00;
+
+		// TTL & protocol
+		ip_checksum[0] += 0x04; //??
+		ip_checksum[1] += 0x11;
+
+		//source ip address
+		ip_checksum[0] += ip_sourceIP[0];
+		ip_checksum[1] += ip_sourceIP[1];
+
+		ip_checksum[0] += ip_sourceIP[2];
+		ip_checksum[1] += ip_sourceIP[3];
+
+		//destination ip address
+		ip_checksum[0] += ip_destinationIP[0];
+		ip_checksum[1] += ip_destinationIP[1];
+
+		ip_checksum[0] += ip_destinationIP[2];
+		ip_checksum[1] += ip_destinationIP[3];
+
+		ip_checksum[0] = (byte)(~ip_checksum[0]);
+		ip_checksum[1] = (byte)(~ip_checksum[1]);
+
+		//헤더만 더해요 ㅎㅎㅎ
+
+		return ip_checksum;
+	}
+
+	boolean checkCheckSum(byte[] data){
+		byte[] noheaderData = new byte[data.length - IP_HEAD_SIZE];
+		System.arraycopy(data, 20, noheaderData, 0, noheaderData.length); //짤라서
+
+		byte[] checkingChecksum = new byte[2];
+		checkingChecksum[0] = makeChecksum(noheaderData)[0];
+		checkingChecksum[1] = makeChecksum(noheaderData)[1];
+
+		byte[] dst_checksum = new byte[2]; //오리지널과
+		dst_checksum[0] = data[10];
+		dst_checksum[1] = data[11];
+		//받은 패킷에 대한 체크썸.
+		// now check the checksum;
+
+		if (checkingChecksum[0] == dst_checksum[0] && checkingChecksum[1] == dst_checksum[1]) { //비교한다
+			return true;
+		} else {
+			return false;
+		}
+	}
+
 }
