@@ -154,7 +154,6 @@ public class IPLayer extends BaseLayer {
 					if (i % 8 == 0)
 						System.out.println();
 					System.out.printf("%x ", data[i]);
-
 				}
 				System.out.println();
 				System.out.println("--------------------------------------");
