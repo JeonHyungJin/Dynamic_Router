@@ -92,6 +92,7 @@ public class IPLayer extends BaseLayer {
 		// destination
 		int check = 0;
 		System.out.println("크ㅇ하하하 거의 왔따~~~ interfaceNum : " + interfaceNumber);
+
 		for (int i = routingIndex -1 ; i >= 0; i--) {
 			byte[] destination = routingTable[i].getDestination();
 			for (int j = 0; j < 4; j++) {
@@ -156,7 +157,7 @@ public class IPLayer extends BaseLayer {
 
 			byte[] udpData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
 
-			if(!((UDPLayer)this.getUpperLayer()).receiveUDP(udpData, frame_src_ip)) {
+			if(!((UDPLayer)this.getUpperLayer()).receiveUDP(udpData, frame_src_ip, frame_dst_ip)) {
                 int check = 0;
                 for (int i = routingIndex - 1; i >= 0; i--) {
                     byte[] destination = routingTable[i].getDestination();
@@ -282,4 +283,23 @@ public class IPLayer extends BaseLayer {
 	public void setRoutingIndex(int routingIndex) {
 		this.routingIndex = routingIndex;
 	}
+
+	public byte[] getConnectedRouter(byte[] sourceIP){
+	    int check = 0;
+        for (int i = routingIndex - 1; i >= 0 && check != 1; i--) {
+            byte[] destination = routingTable[i].getDestination();
+            for (int j = 0; j < 4; j++) {
+                byte[] netMask = routingTable[i].getNetMask();
+                if (destination[j] != (netMask[j] & sourceIP[j])) {
+                    check = 0;
+                    break;
+                } else {
+                    check = 1;
+                }
+            }
+            if( check == 1)
+                return destination;
+        }
+	    return null;
+    }
 }

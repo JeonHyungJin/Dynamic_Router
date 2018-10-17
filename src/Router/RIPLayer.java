@@ -339,7 +339,6 @@ public class RIPLayer extends BaseLayer {
             @Override
             public void run() {
                 //주기적으로 실행되는 부분
-                System.out.println("나 돌고있다고 interfaceNum : " + interfaceNumber);
                 byte[] timer_rip_message = new byte[ 4 + 20 * routingIndex ];
 
                 timer_rip_message[0] = 0x02;
@@ -371,11 +370,6 @@ public class RIPLayer extends BaseLayer {
             }
         };
         timer.schedule(periodic_timer,30000,30000);  //sendRIP함수가 호출되면 0초후부터 run()함수 부분이 30초 마다 실행된다.
-
-        //router 들에게만
-        // hum...
-        // timer 별로 송신
-
     }
 
     public void initialization() {
