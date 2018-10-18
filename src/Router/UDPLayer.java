@@ -226,8 +226,16 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         udp_data[5] = udp_length[1];
 
         /*checksum을 udp_data header에 추가한다*/
+        byte[] tempSource = ((IPLayer)this.getUnderLayer()).ip_sourceIP;
+        byte[] tempDestination = ((IPLayer)this.getUnderLayer()).getConnectedRouter(((IPLayer)this.getUnderLayer()).ip_sourceIP);
+        byte[] broadcast = {(byte)0xff,(byte)0xff,(byte)0xff,(byte)0xff};
+        if( tempDestination == null ){
+            setChecksum(makeChecksum(data, tempSource, broadcast));
 
-        setChecksum(makeChecksum(data, ((IPLayer)this.getUnderLayer()).ip_sourceIP, ((IPLayer)this.getUnderLayer()).getConnectedRouter(((IPLayer)this.getUnderLayer()).ip_sourceIP)));
+        }else{
+            setChecksum(makeChecksum(data, tempSource, tempDestination));
+
+        }
         udp_data[6] = udp_checksum[0];
         udp_data[7] = udp_checksum[1];
 

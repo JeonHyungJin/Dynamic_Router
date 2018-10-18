@@ -219,7 +219,8 @@ public class ApplicationLayer extends JFrame {
 
                StaticRoutingList.add(byte2IP(routingTable[routingIndex - 1].getDestination()) + "  "
                        + byte2IP(routingTable[routingIndex - 1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex - 1].getGateway())
-                       + "  " + routingTable[routingIndex - 1].getFlag() + "  " + routingTable[routingIndex - 1].getInterface() + "  " + routingTable[routingIndex - 1].getMetric());
+                       + "  " + routingTable[routingIndex - 1].getFlag() + "  " + routingTable[routingIndex - 1].getInterface() + "  "
+                       + routingTable[routingIndex - 1].getMetric());
 
            } else if (id == 1) {
                // 엔트리 정보가 변경된 경우
