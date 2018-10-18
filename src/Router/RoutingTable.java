@@ -241,13 +241,8 @@ public class RoutingTable {
          @Override
          public void run() {
             RT_metric = 16;
-            // 나 바뀌었어용~
-            // sending
-            // 반대쪽 으로 보내기인데
-            // 정보 변경
             RT_state = -1;
             ApplicationLayer.ifTableChaged(4, RT_Index, RT_interface);
-
             garbage_timer = new Timer();
             garbage_task = new TimerTask() {
                @Override
