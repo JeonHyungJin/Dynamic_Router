@@ -139,7 +139,6 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
     }
 
     boolean receiveUDP(byte[] data, byte[] sourceIP, byte[] destinationIP) {
-        System.out.println("여길 온다고?!");
         if (checkChecksum(data, sourceIP, destinationIP)) {
             System.out.println("good!");
             byte[] dst_port = new byte[2];
@@ -244,7 +243,6 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         for (int i = 0; i < length; i++)
             udp_data[i + UDP_HEAD_SIZE] = data[i];
 
-        System.out.println("가즈아~~~~~~~~~");
         if (((IPLayer) this.getUnderLayer()).sendUDP(udp_data)) {
             return true;
         } else
