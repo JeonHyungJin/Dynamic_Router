@@ -8,9 +8,12 @@ public class RIPLayer extends BaseLayer {
     // Version은 2만 사용한다고 가정
     byte[] rip_message;
     byte[] ip_sourceIP = new byte[4];
+    byte[] portNumber = new byte[2];
     RoutingTable[] routingTable;
+    NATEntryTable[] NATentryTable;
 
     private int routingIndex;
+    private int entryTableIndex=0;
 
     int interfaceNumber = 0;
     RIPLayer otherRIPLayer;
@@ -20,7 +23,9 @@ public class RIPLayer extends BaseLayer {
     public void setRoutingTable(RoutingTable[] routingTable) {
         this.routingTable = routingTable;
     }
-
+    public void setNATEntryTable(NATEntryTable[] NATentryTable) {
+        this.NATentryTable = NATentryTable;
+    }
     public void setInterfaceNumber(int interfaceNumber) {
         this.interfaceNumber = interfaceNumber;
     }
@@ -41,6 +46,8 @@ public class RIPLayer extends BaseLayer {
     public void setRoutingIndex(int routingIndex) {
         this.routingIndex = routingIndex;
     }
+
+    public void setPortNumber(byte[] portNumber){this.portNumber = portNumber;}
 
     public void setOtherRIPLayer(RIPLayer otherRIPLayer) {
         this.otherRIPLayer = otherRIPLayer;
@@ -316,6 +323,25 @@ public class RIPLayer extends BaseLayer {
                     ((UDPLayer) otherRIPLayer.getUnderLayer()).sendRIP(other_rip_message);
                 }
         }
+    }
+
+    public void receiveNAT(byte[] dataNAT, byte[] port){
+        // 글로벌로 보내는 경우
+        // srcip scrport routerip routerport???
+        byte[] srcIP = new byte[4];
+        srcIP[0] = dataNAT[25];
+        srcIP[1] = dataNAT[26];
+        srcIP[2] = dataNAT[27];
+        srcIP[3] = dataNAT[28];
+
+        byte[] desIP = new byte[4];
+        desIP[0] = dataNAT[29];
+        desIP[1] = dataNAT[30];
+        desIP[2] = dataNAT[31];
+        desIP[3] = dataNAT[32];
+
+        NATentryTable[entryTableIndex] = new NATEntryTable()
+        // 글로벌에서 들어오는 경우
     }
 
     public void runTimers(){
