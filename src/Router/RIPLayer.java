@@ -9,6 +9,9 @@ public class RIPLayer extends BaseLayer {
     byte[] rip_message;
     byte[] ip_sourceIP = new byte[4];
     byte[] portNumber = new byte[2];
+    byte[] localIP = new byte[4];
+    byte[] globalIP = new byte[4];
+    byte[] localPort = new byte[2];
     RoutingTable[] routingTable;
     NATEntryTable[] NATentryTable;
 
@@ -334,14 +337,20 @@ public class RIPLayer extends BaseLayer {
         srcIP[2] = dataNAT[27];
         srcIP[3] = dataNAT[28];
 
-        byte[] desIP = new byte[4];
-        desIP[0] = dataNAT[29];
-        desIP[1] = dataNAT[30];
-        desIP[2] = dataNAT[31];
-        desIP[3] = dataNAT[32];
+        //this.getUnderLayer에서 포트넘버를 가져온다.
+        byte[] srcPort = new byte[2];
 
-        NATentryTable[entryTableIndex] = new NATEntryTable()
+        globalIP[0] = dataNAT[29];
+        globalIP[1] = dataNAT[30];
+        globalIP[2] = dataNAT[31];
+        globalIP[3] = dataNAT[32];
+
+        NATentryTable[entryTableIndex] = new NATEntryTable(srcIP,srcPort,localIP,localPort);
+        entryTableIndex++;
+
+
         // 글로벌에서 들어오는 경우
+
     }
 
     public void runTimers(){
