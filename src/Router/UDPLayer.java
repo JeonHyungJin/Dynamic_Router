@@ -33,21 +33,9 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
     }
 
     public byte[] makeChecksum(byte[] data, byte[] sourceIP, byte[] destinationIP) {
-        //지금은 데이터 관련해서 덧셈을 하여 체크섬을 만들었는데.
-        //피디에프 확인 결과 가상 헤더에 관해서 IPAddress의 관련 바이트를 또한 더해야한다.
-        //하지만 정확한 이해가 되지않아 주석만 달아 올립니다.
-
-        //((IPLayer)this.getUnderLayer()).ip_sourceIP;
-        //((IPLayer)this.getUnderLayer()).ip_destinationIP;
-        //zero = (byte)0x00;
-        //protocol = (byte)0x11;
-        //udp_length]
-        //////////////////////////////////////////////////////////////// W
         byte[] checksumFirst = new byte[1]; //굳이 배열안써도 될듯.
         byte[] checksumSecond = new byte[1];
         byte[] checksum = new byte[2];
-
-        int length = data.length;
 
         //Pseudo IPAddress
         checksumFirst[0] += sourceIP[0];
@@ -66,7 +54,6 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         checksumFirst[0] += (byte) (((data.length + 8)) / 0xFF);;
         checksumSecond[0] += (byte)0x11; //Protocol
         checksumSecond[0] += (byte) (((data.length + 8)) % 0xFF);;
-
 
         //UDP sourcePort & destinationPort
         checksumFirst[0] += udp_sourcePort[0];
@@ -97,23 +84,24 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
 
 
         return checksum; //체크섬 반환
-//////////////////////////////////////////////////////////////////////////// N
 
-//        SHA-512암호화
-//        MessageDigest digest;
-//        byte[] checksum = null;
-//        try {
-//            digest = MessageDigest.getInstance("SHA-512");
-//            digest.reset();
-//            digest.update(data);
-//            byte[] hiddenData = digest.digest();// 암호화 시킴
-//            checksum = Arrays.copyOfRange(hiddenData, 0, 2);
-//        } catch (NoSuchAlgorithmException e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        }
-//
-//        return checksum; //checksum 리턴
+//////////////////////////CISCO SHA-512 암호화////////////////////////////////
+//                                                                        //
+//        SHA-512암호화                                                     //
+//        MessageDigest digest;                                           //
+//        byte[] checksum = null;                                         //
+//        try {                                                           //
+//            digest = MessageDigest.getInstance("SHA-512");              //
+//            digest.reset();                                             //
+//            digest.update(data);                                        //
+//            byte[] hiddenData = digest.digest();// 암호화 시킴             //
+//            checksum = Arrays.copyOfRange(hiddenData, 0, 2);            //
+//        } catch (NoSuchAlgorithmException e) {                          //
+//            e.printStackTrace();                                        //
+//        }                                                               //
+//                                                                        //
+//        return checksum; //checksum 리턴                                 //
+////////////////////////////////////////////////////////////////////////////
     }
 
 
@@ -135,17 +123,14 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
             udp_length[0] = (byte) (((data.length + 8)) / 256);
             udp_length[1] = (byte) (((data.length + 8)) % 256);
         }
-
     }
 
     boolean receiveUDP(byte[] data, byte[] sourceIP, byte[] destinationIP) {
         if (checkChecksum(data, sourceIP, destinationIP)) {
-            System.out.println("good!");
             byte[] dst_port = new byte[2];
             // byte-order 한번 고민쯤은~
             dst_port[0] = data[2];
             dst_port[1] = data[3];
-// 520
             if (dst_port[0] == 0x02 && dst_port[1] == 0x08) {
                 System.out.println("rip receive");
                 // rip 프로토콜 인거~
@@ -169,16 +154,6 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         // 수신 시 !
         byte[] noheaderData = new byte[data.length - UDP_HEAD_SIZE];
         System.arraycopy(data, 8, noheaderData, 0, noheaderData.length); //짤라서
-
-        System.out.println("--------------- UDP -------------------");
-        for( int i = 0; i<noheaderData.length ; i++){
-            if( i % 8 ==0 )
-                System.out.println();
-            System.out.printf("%x ", noheaderData[i]);
-
-        }
-        System.out.println();
-        System.out.println("--------------------------------------");
 
         byte[] checkingChecksum = new byte[2];
         checkingChecksum[0] = makeChecksum(noheaderData, sourceIP, destinationIP)[0];
@@ -231,6 +206,9 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         if( tempDestination == null ){
             setChecksum(makeChecksum(data, tempSource, broadcast));
 
+        setChecksum(makeChecksum(data,
+                ((IPLayer)this.getUnderLayer()).ip_sourceIP,
+                ((IPLayer)this.getUnderLayer()).getConnectedRouter(((IPLayer)this.getUnderLayer()).ip_sourceIP)));
         }else{
             setChecksum(makeChecksum(data, tempSource, tempDestination));
 
