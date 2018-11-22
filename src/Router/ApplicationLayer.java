@@ -30,12 +30,10 @@ import javax.swing.SwingConstants;
 /**
  * GUI 환경 구성
  *  - 테이블 내용 추가, 버튼 리스너 코딩
- *  201402420 전형진(jhj)
  *  201302477 전철민
  *  201402343 남진우
  *  201402450 현도훈
  *  201402424 정유진
- *  201402406 이진원
  */
 
 public class ApplicationLayer extends JFrame {
@@ -219,7 +217,8 @@ public class ApplicationLayer extends JFrame {
 
                StaticRoutingList.add(byte2IP(routingTable[routingIndex - 1].getDestination()) + "  "
                        + byte2IP(routingTable[routingIndex - 1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex - 1].getGateway())
-                       + "  " + routingTable[routingIndex - 1].getFlag() + "  " + routingTable[routingIndex - 1].getInterface() + "  " + routingTable[routingIndex - 1].getMetric());
+                       + "  " + routingTable[routingIndex - 1].getFlag() + "  " + routingTable[routingIndex - 1].getInterface() + "  "
+                       + routingTable[routingIndex - 1].getMetric());
 
            } else if (id == 1) {
                // 엔트리 정보가 변경된 경우
