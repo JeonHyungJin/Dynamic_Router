@@ -1,37 +1,38 @@
 package Router;
 
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
-import java.util.Arrays;
+public class TCPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 사용하는 암호화를 이용하여 체크섬을 완료하였다.
+    final static int TCP_HEAD_SIZE = 20;
 
-public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 사용하는 암호화를 이용하여 체크섬을 완료하였다.
-    final static int UDP_HEAD_SIZE = 8;
+    // TCP_HEADERB
+    byte[] tcp_head = new byte[TCP_HEAD_SIZE];
+    byte[] tcp_sourcePort = new byte[2];
+    byte[] tcp_destinationPort = new byte[2];
+    byte[] tcp_checksum = new byte[2];    //checksum에서 이거 사용 해야될듯
+    byte[] tcp_data;
 
-    // UDP_HEADER BBAAM;
-    byte[] udp_head = new byte[UDP_HEAD_SIZE];
-    byte[] udp_sourcePort = new byte[2];
-    byte[] udp_destinationPort = new byte[2];
-    byte[] udp_length = new byte[2];
-    byte[] udp_checksum = new byte[2];    //checksum에서 이거 사용 해야될듯
-    byte[] udp_data;
+    // MakeChecksum 재검토 필요
 
-    public UDPLayer(String layerName) {
+
+    public TCPLayer(String layerName) {
         super(layerName);
     }
 
     /**
-     * @param sourcePort
+     * @param sourcePort : NAT 입장에선 바뀐 PORT로 설정해준다.
      */
     void setSourcePort(byte[] sourcePort) {
         for (int i = 0; i < 2; i++)
-            udp_sourcePort[i] = sourcePort[i];
+            tcp_sourcePort[i] = sourcePort[i];
     }
 
     void setDestinationPort(byte[] destinationPort) {
         for (int i = 0; i < 2; i++)
-            udp_destinationPort[i] = destinationPort[i];
+            tcp_destinationPort[i] = destinationPort[i];
     }
 
+    /**
+     * port가 바뀌므로 체크썸도 그에 맞춰 변경 시켜줘야한다.
+     */
     public byte[] makeChecksum(byte[] data, byte[] sourceIP, byte[] destinationIP) {
         //지금은 데이터 관련해서 덧셈을 하여 체크섬을 만들었는데.
         //피디에프 확인 결과 가상 헤더에 관해서 IPAddress의 관련 바이트를 또한 더해야한다.
@@ -62,35 +63,39 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         checksumSecond[0] += destinationIP[3];
 
         //Pseudo Protocol & udp_length
-        checksumFirst[0] += (byte)0x00;
-        checksumFirst[0] += (byte) (((data.length + 8)) / 0xFF);;
-        checksumSecond[0] += (byte)0x11; //Protocol
-        checksumSecond[0] += (byte) (((data.length + 8)) % 0xFF);;
+        checksumFirst[0] += (byte) 0x00;
+        checksumFirst[0] += (byte) (((data.length + 8)) / 0xFF);
+        ;
+        checksumSecond[0] += (byte) 0x11; //Protocol
+        checksumSecond[0] += (byte) (((data.length + 8)) % 0xFF);
+        ;
 
 
         //UDP sourcePort & destinationPort
-        checksumFirst[0] += udp_sourcePort[0];
-        checksumFirst[0] += udp_destinationPort[0];
-        checksumSecond[0] += udp_sourcePort[1];
-        checksumSecond[0] += udp_destinationPort[1];
+        checksumFirst[0] += tcp_sourcePort[0];
+        checksumFirst[0] += tcp_destinationPort[0];
+        checksumSecond[0] += tcp_sourcePort[1];
+        checksumSecond[0] += tcp_destinationPort[1];
 
         //UDP Length
-        checksumFirst[0] += (byte) (((data.length + 8)) / 0xFF);;
-        checksumSecond[0] += (byte) (((data.length + 8)) % 0xFF);;
+        checksumFirst[0] += (byte) (((data.length + 8)) / 0xFF);
+        ;
+        checksumSecond[0] += (byte) (((data.length + 8)) % 0xFF);
+        ;
 
         //UDP Data
-        for(int i = 0; i< data.length; i = i+2){
-            if( i == data.length - 1){
+        for (int i = 0; i < data.length; i = i + 2) {
+            if (i == data.length - 1) {
                 checksumFirst[0] += data[i];
-            }else{
+            } else {
                 checksumFirst[0] += data[i]; //홀수 인덱스끼리 더한다.
-                checksumSecond[0] += data[i+1]; //짝수 인덱스끼리 더한다.
+                checksumSecond[0] += data[i + 1]; //짝수 인덱스끼리 더한다.
             }
         }
 
         //보수를 취한다. 되네!^^
-        checksum[0] = (byte)(~checksumFirst[0]);
-        checksum[1] = (byte)(~checksumSecond[0]);
+        checksum[0] = (byte) (~checksumFirst[0]);
+        checksum[1] = (byte) (~checksumSecond[0]);
 
 
         //   그냥 보수취하는게 이상하긴 하지만 일단 pdf에 나와있는대로 했음.
@@ -116,65 +121,31 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
 //        return checksum; //checksum 리턴
     }
 
-
-
     void setChecksum(byte[] checksum) {
         //checksum 헤더에 넣어요
-        udp_checksum[0] = checksum[0];
-        udp_checksum[1] = checksum[1];
+        tcp_checksum[0] = checksum[0];
+        tcp_checksum[1] = checksum[1];
     }
 
+    boolean receiveTCP(byte[] data, byte[] sourceIP, byte[] destinationIP) {
 
-    void setLength(byte[] data) {
-        // 길이를 설정한다.
-        // data.length + 8 을 255 기준으로 2바이트로 나누어 저장한다.
-        if ((data.length + 8) < 256) { //확실쓰
-            udp_length[0] = (byte) 0x00;
-            udp_length[1] = (byte) ((data.length + 8) & 0xFF);
-        } else {
-            udp_length[0] = (byte) (((data.length + 8)) / 256);
-            udp_length[1] = (byte) (((data.length + 8)) % 256);
-        }
-
-    }
-
-    boolean receiveUDP(byte[] data, byte[] sourceIP, byte[] destinationIP) {
-
-        if (checkChecksum(data, sourceIP, destinationIP)) {
-
-            byte[] dst_port = new byte[2];
-            // byte-order 한번 고민쯤은~
-            dst_port[0] = data[2];
-            dst_port[1] = data[3];
-// 520
-            if (dst_port[0] == 0x02 && dst_port[1] == 0x08) {
-
-                // rip 프로토콜 인거~
-                byte[] dataRIP = new byte[data.length - UDP_HEAD_SIZE];
-                System.arraycopy(data, UDP_HEAD_SIZE, dataRIP, 0, dataRIP.length);
-
-                ((RIPLayer) this.getUpperLayer()).receiveRIP(dataRIP, sourceIP);
-            }else{
-                // nat 이뤄져야함
-
-                // 이상 없는 데이터
-                // 여기 까지 올라온 패킷은 NAT의 기능을 누리려는 친구들
-                // 고로 이 상위인 RoutingModule ( 아직은 RIPLayer) 로 넘겨서 NAT 된 체로 넘어간다.
-
-                // return RoutingModule.translation(data)ㅈ
-                return false;
-            }
-        } else {
+        if (!checkChecksum(data, sourceIP, destinationIP)) {
             // checksum 오류 맨~
-
-            return true; //오류면 버린다(?)
+            return false; //오류면 버린다(?)
         }
+
+        // 이상 없는 데이터
+        // 여기 까지 올라온 패킷은 NAT의 기능을 누리려는 친구들
+        // 고로 이 상위인 RoutingModule ( 아직은 RIPLayer) 로 넘겨서 NAT 된 체로 넘어간다.
+
+        // return RoutingModule.translation(data)
+
         return true;
     }
 
     boolean checkChecksum(byte[] data, byte[] sourceIP, byte[] destinationIP) {
         // 수신 시 !
-        byte[] noheaderData = new byte[data.length - UDP_HEAD_SIZE];
+        byte[] noheaderData = new byte[data.length - TCP_HEAD_SIZE];
         System.arraycopy(data, 8, noheaderData, 0, noheaderData.length); //짤라서
 
         byte[] checkingChecksum = new byte[2];
@@ -194,11 +165,11 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         }
     }
 
-    boolean sendRIP(byte[] data) {
+    boolean sendTCP(byte[] data) {
         int length = data.length;
         byte[] destinationPort = {(byte) 0x02, 0x08};
         byte[] sourcePort = {(byte) 0x02, 0x08}; //임의로 넣어 놓은 것.
-        udp_data = new byte[data.length + UDP_HEAD_SIZE];
+        tcp_data = new byte[data.length + TCP_HEAD_SIZE];
 
         // encapsulation
 
@@ -206,40 +177,36 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
 
         //udp source port 설정, 더 고민해봐야함.
         setSourcePort(sourcePort);
-        udp_data[0] = udp_sourcePort[0];
-        udp_data[1] = udp_sourcePort[1];
+        tcp_data[0] = tcp_sourcePort[0];
+        tcp_data[1] = tcp_sourcePort[1];
 
         //udp destination port 설정
         setDestinationPort(destinationPort);
-        udp_data[2] = udp_destinationPort[0];
-        udp_data[3] = udp_destinationPort[1];
+        tcp_data[2] = tcp_destinationPort[0];
+        tcp_data[3] = tcp_destinationPort[1];
 
         //length를 설정 해야할까요..? ㅎㅎ
-        setLength(data);
-        udp_data[4] = udp_length[0];
-        udp_data[5] = udp_length[1];
 
         /*checksum을 udp_data header에 추가한다*/
-        byte[] tempSource = ((IPLayer)this.getUnderLayer()).ip_sourceIP;
-        byte[] tempDestination = ((IPLayer)this.getUnderLayer()).getConnectedRouter(((IPLayer)this.getUnderLayer()).ip_sourceIP);
-        byte[] broadcast = {(byte)0xff,(byte)0xff,(byte)0xff,(byte)0xff};
-        if( tempDestination == null ){
+        byte[] tempSource = ((IPLayer) this.getUnderLayer()).ip_sourceIP;
+        byte[] tempDestination = ((IPLayer) this.getUnderLayer()).getConnectedRouter(((IPLayer) this.getUnderLayer()).ip_sourceIP);
+        byte[] broadcast = {(byte) 0xff, (byte) 0xff, (byte) 0xff, (byte) 0xff};
+        if (tempDestination == null) {
             setChecksum(makeChecksum(data, tempSource, broadcast));
 
-        }else{
+        } else {
             setChecksum(makeChecksum(data, tempSource, tempDestination));
 
         }
-        udp_data[6] = udp_checksum[0];
-        udp_data[7] = udp_checksum[1];
+        tcp_data[6] = tcp_checksum[0];
+        tcp_data[7] = tcp_checksum[1];
 
 
         //데이터 설정
         for (int i = 0; i < length; i++)
-            udp_data[i + UDP_HEAD_SIZE] = data[i];
+            tcp_data[i + TCP_HEAD_SIZE] = data[i];
 
-        System.out.println("가즈아~~~~~~~~~");
-        if (((IPLayer) this.getUnderLayer()).sendUDP(udp_data)) {
+        if (((IPLayer) this.getUnderLayer()).sendUDP(tcp_data)) {
             return true;
         } else
             return false;

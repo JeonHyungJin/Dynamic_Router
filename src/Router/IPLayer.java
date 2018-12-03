@@ -13,6 +13,10 @@ public class IPLayer extends BaseLayer {
 
     int interfaceNumber;
 
+    // BaseLayer에서는 기본적으로 한개의 상위레이어만 가질수 있음,
+    // 헌데 NAT 구현엔 2개의 상위레이어가 필요하여
+    // 아래 upperTCPLayer를 클래스변수로 추가함.
+    TCPLayer upperTCPLayer;
     IPLayer otherIPLayer;
 
     RoutingTable[] routingTable;
@@ -21,6 +25,8 @@ public class IPLayer extends BaseLayer {
     public IPLayer(String layerName) {
         super(layerName);
     }
+
+    void setUpperTCPLayer(TCPLayer tcpLayer){ this.upperTCPLayer = tcpLayer;}
 
     void setOtherIPLayer(IPLayer other) {
         otherIPLayer = other;
@@ -82,34 +88,44 @@ public class IPLayer extends BaseLayer {
         ip_data[14] = ip_sourceIP[2];
         ip_data[15] = ip_sourceIP[3];
         // destination
+        //
+        int i = findRoutingEntry(ip_sourceIP);
+        if (i != -1) {
+            if (routingTable[i].getFlag() != Flag.UG) {
+                return false;
+            }
+            // Destination
+            ip_data[16] = routingTable[i].getGateway()[0];
+            ip_data[17] = routingTable[i].getGateway()[1];
+            ip_data[18] = routingTable[i].getGateway()[2];
+            ip_data[19] = routingTable[i].getGateway()[3];
+            // 전송 할 data를 Ethernet frame으로 복사
+            for (int k = 0; k < length; k++)
+                ip_data[k + IP_HEAD_SIZE] = data[k];
+            // 바로 센딩
+            return ((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
+        }
+
+        return false;
+    }
+
+    int findRoutingEntry(byte[] address) {
+        // 테이블 내에 있는가 찾느것
         int check = 0;
-        for (int i = routingIndex - 1; i >= 0; i--) {
+        for (int i = routingIndex -1 ; i >= 0; i--) {
             byte[] destination = routingTable[i].getDestination();
             for (int j = 0; j < 4; j++) {
-                byte[] netMask = routingTable[i].getNetMask();
-                if (destination[j] != (netMask[j] & ip_sourceIP[j])) {
+                if (destination[j] != address[j]) {
                     check = 0;
                     break;
                 } else
                     check = 1;
             }
-            if (check == 1) {
-                if (routingTable[i].getFlag() != Flag.UG) {
-                    return false;
-                }
-                // Destination
-                ip_data[16] = routingTable[i].getGateway()[0];
-                ip_data[17] = routingTable[i].getGateway()[1];
-                ip_data[18] = routingTable[i].getGateway()[2];
-                ip_data[19] = routingTable[i].getGateway()[3];
-                // 전송 할 data를 Ethernet frame으로 복사
-                for (int k = 0; k < length; k++)
-                    ip_data[k + IP_HEAD_SIZE] = data[k];
-                // 바로 센딩
-                return ((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
+            if(check == 1){
+                return i;
             }
         }
-        return false;
+        return -1;
     }
 
     boolean receiveIP(byte[] data) {
@@ -122,6 +138,9 @@ public class IPLayer extends BaseLayer {
         frame_dst_ip[2] = data[18];
         frame_dst_ip[3] = data[19];
 
+
+        // NAT 가 되어야하는 지 파악
+
         if (data[9] == 0x11) {
             // UDP 레이어
             byte[] frame_src_ip = new byte[4];
@@ -131,30 +150,28 @@ public class IPLayer extends BaseLayer {
             frame_src_ip[2] = data[14];
             frame_src_ip[3] = data[15];
 
-            byte[] udpData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
-            if (!((UDPLayer) this.getUpperLayer()).receiveUDP(udpData, frame_src_ip, frame_dst_ip)) {
-                int check = 0;
-                for (int i = routingIndex - 1; i >= 0; i--) {
-                    byte[] destination = routingTable[i].getDestination();
-                    for (int j = 0; j < 4; j++) {
-                        byte[] netMask = routingTable[i].getNetMask();
-                        if (destination[j] != (netMask[j] & frame_dst_ip[j])) {
-                            check = 0;
-                            break;
-                        } else
-                            check = 1;
+            byte[] transportLayerData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
+            if (!((UDPLayer) this.getUpperLayer()).receiveUDP(transportLayerData, frame_src_ip, frame_dst_ip)) {
+                int i = findRoutingEntry(frame_dst_ip);
+                if (i != -1) {
+                    if (interfaceNumber == routingTable[i].getInterface()) {
+                        ((ARPLayer) this.getUnderLayer()).send(data, routingTable[i].getGateway());
+                    } else {
+                        // NAT 작업이 이뤄져야함.
+                        // 여기서 문제! 라우터가 2개 연결되었다면,,,
+                        // 1번 라우터에서도 서로 다른 인터페이스로 가려할때 NAT를 함..
+                        // 2번 라우터에서도 마찬가지고,,,
+                        // 그런데, 실상은 2번만 NAT가 필요해, 이건 어떻게 해야하는 지 물어보자
+                        // 일단은 1개만 연결해서 실습한다 생각하고 진행쓰 뻄
+
+                        ((UDPLayer)this.upperLayer).receiveUDP(transportLayerData, frame_src_ip, frame_dst_ip);
                     }
-                    if (check == 1) {
-                        if (interfaceNumber == routingTable[i].getInterface()) {
-                            ((ARPLayer) this.getUnderLayer()).send(data, routingTable[i].getGateway());
-                        } else {
-                            ((ARPLayer) otherIPLayer.getUnderLayer()).send(data, routingTable[i].getGateway());
-                        }
-                        return true;
-                    }
+                    return true;
                 }
             }
-        } else {
+
+        } else if ( data[9]== 0x01){
+            // ICMP
             // 데이터
             System.arraycopy(data, 0, ip_data, 0, data.length);
 
@@ -169,26 +186,31 @@ public class IPLayer extends BaseLayer {
             }
             if (check == 1)
                 return true;
-            for (int i = routingIndex - 1; i >= 0; i--) {
-                byte[] destination = routingTable[i].getDestination();
-                for (int j = 0; j < 4; j++) {
-                    byte[] netMask = routingTable[i].getNetMask();
-                    if (destination[j] != (netMask[j] & frame_dst_ip[j])) {
-                        check = 0;
-                        break;
-                    } else
-                        check = 1;
-                } //서브넷 마스크와 아이피를 앤드 연산을 하고 그것이 데스티네이션과 같지않다면 체크가 0, 있으면 1 로 한다.
-                if (check == 1) {
-                    if (interfaceNumber == routingTable[i].getInterface()) {
-                        ((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
-                    } else {
-                        ((ARPLayer) otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
-                    }
-                    return true;
+        }else {
+            byte[] frame_src_ip = new byte[4];
+
+            frame_src_ip[0] = data[12];
+            frame_src_ip[1] = data[13];
+            frame_src_ip[2] = data[14];
+            frame_src_ip[3] = data[15];
+
+            byte[] transportLayerData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
+
+            int i = findRoutingEntry(frame_dst_ip);
+            //서브넷 마스크와 아이피를 앤드 연산을 하고 그것이 데스티네이션과 같지않다면 체크가 0, 있으면 1 로 한다.
+            if (i != -1) {
+                if (interfaceNumber == routingTable[i].getInterface()) {
+                    ((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
                 } else {
-                    System.out.println("테이블에 저장되지 않은 목적지");
+                    if (data[9] == 0x06){
+                        // TCP 인 경우만
+                        ((TCPLayer)this.upperTCPLayer).receiveTCP(transportLayerData, frame_src_ip, frame_dst_ip);
+
+                    }
                 }
+                return true;
+            } else {
+                System.out.println("테이블에 저장되지 않은 목적지");
             }
         }
 
@@ -317,10 +339,7 @@ public class IPLayer extends BaseLayer {
         //받은 패킷에 대한 체크썸.
         // now check the checksum;
 
-        if (checkingChecksum[0] == dst_checksum[0] && checkingChecksum[1] == dst_checksum[1]) { //비교한다
-            return true;
-        } else {
-            return false;
-        }
+        //비교한다
+        return checkingChecksum[0] == dst_checksum[0] && checkingChecksum[1] == dst_checksum[1];
     }
 }
