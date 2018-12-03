@@ -134,6 +134,28 @@ public class TCPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
             return false; //오류면 버린다(?)
         }
 
+        byte[] dst_port = new byte[2];
+        // byte-order 한번 고민쯤은~
+        dst_port[0] = data[2];
+        dst_port[1] = data[3];
+        byte[] src_port = new byte[2];
+        // byte-order 한번 고민쯤은~
+        src_port[0] = data[0];
+        src_port[1] = data[1];
+
+        if(isToIntra(destinationIP))
+            ((RIPLayer) this.getUpperLayer()).convertToOriginal(destinationIP, dst_port);
+        else{
+            ((RIPLayer) this.getUpperLayer()).receiveNAT(sourceIP, src_port, destinationIP, dst_port);
+        }
+
+        ((IPLayer)this.underLayer).setSourceIpAddress(sourceIP);
+        ((IPLayer)this.underLayer).setDestinationIPAddress(destinationIP);
+
+        setSourcePort(src_port);
+        setDestinationPort(dst_port);
+        makeChecksum(data, sourceIP, destinationIP);
+
         // 이상 없는 데이터
         // 여기 까지 올라온 패킷은 NAT의 기능을 누리려는 친구들
         // 고로 이 상위인 RoutingModule ( 아직은 RIPLayer) 로 넘겨서 NAT 된 체로 넘어간다.
@@ -142,6 +164,15 @@ public class TCPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
 
         return true;
     }
+
+    private boolean isToIntra(byte[] destinationIP) {
+        for(int i=0;i<4;i++){
+            if(((RIPLayer) this.getUpperLayer()).localIP[i] != destinationIP[i])
+                return false;
+        }
+        return true;
+    }
+
 
     boolean checkChecksum(byte[] data, byte[] sourceIP, byte[] destinationIP) {
         // 수신 시 !

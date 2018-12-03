@@ -138,7 +138,7 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
 
     }
 
-    boolean receiveUDP(byte[] data, byte[] sourceIP, byte[] destinationIP) {
+    int receiveUDP(byte[] data, byte[] sourceIP, byte[] destinationIP) {
 
         if (checkChecksum(data, sourceIP, destinationIP)) {
 
@@ -146,28 +146,52 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
             // byte-order 한번 고민쯤은~
             dst_port[0] = data[2];
             dst_port[1] = data[3];
+            byte[] src_port = new byte[2];
+            // byte-order 한번 고민쯤은~
+            src_port[0] = data[0];
+            src_port[1] = data[1];
 // 520
+
             if (dst_port[0] == 0x02 && dst_port[1] == 0x08) {
-
                 // rip 프로토콜 인거~
-                byte[] dataRIP = new byte[data.length - UDP_HEAD_SIZE];
-                System.arraycopy(data, UDP_HEAD_SIZE, dataRIP, 0, dataRIP.length);
 
+                byte[] dataRIP = new byte[data.length];
+
+                System.arraycopy(data, UDP_HEAD_SIZE, dataRIP, 0, dataRIP.length);
                 ((RIPLayer) this.getUpperLayer()).receiveRIP(dataRIP, sourceIP);
+                return 1;
             }else{
                 // nat 이뤄져야함
 
                 // 이상 없는 데이터
                 // 여기 까지 올라온 패킷은 NAT의 기능을 누리려는 친구들
                 // 고로 이 상위인 RoutingModule ( 아직은 RIPLayer) 로 넘겨서 NAT 된 체로 넘어간다.
+                if(isToIntra(destinationIP))
+                    ((RIPLayer) this.getUpperLayer()).convertToOriginal(destinationIP, dst_port);
+                else{
+                    ((RIPLayer) this.getUpperLayer()).receiveNAT(sourceIP, src_port, destinationIP, dst_port);
+                }
 
-                // return RoutingModule.translation(data)ㅈ
-                return false;
+                ((IPLayer)this.underLayer).setSourceIpAddress(sourceIP);
+                ((IPLayer)this.underLayer).setDestinationIPAddress(destinationIP);
+
+                setSourcePort(src_port);
+                setDestinationPort(dst_port);
+                makeChecksum(data, sourceIP, destinationIP);
+                return 0;
             }
         } else {
             // checksum 오류 맨~
 
-            return true; //오류면 버린다(?)
+            return 0; //오류면 버린다(?)
+        }
+
+    }
+
+    private boolean isToIntra(byte[] destinationIP) {
+        for(int i=0;i<4;i++){
+            if(((RIPLayer) this.getUpperLayer()).localIP[i] != destinationIP[i])
+                return false;
         }
         return true;
     }

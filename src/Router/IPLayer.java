@@ -100,8 +100,7 @@ public class IPLayer extends BaseLayer {
             ip_data[18] = routingTable[i].getGateway()[2];
             ip_data[19] = routingTable[i].getGateway()[3];
             // 전송 할 data를 Ethernet frame으로 복사
-            for (int k = 0; k < length; k++)
-                ip_data[k + IP_HEAD_SIZE] = data[k];
+
             // 바로 센딩
             return ((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
         }
@@ -111,11 +110,13 @@ public class IPLayer extends BaseLayer {
 
     int findRoutingEntry(byte[] address) {
         // 테이블 내에 있는가 찾느것
+        // 나중에 들어간거 부터 서칭 함.
         int check = 0;
         for (int i = routingIndex -1 ; i >= 0; i--) {
             byte[] destination = routingTable[i].getDestination();
+            byte[] netmask = routingTable[i].getNetMask();
             for (int j = 0; j < 4; j++) {
-                if (destination[j] != address[j]) {
+                if (destination[j] != (address[j]&netmask[j])) {
                     check = 0;
                     break;
                 } else
@@ -126,6 +127,21 @@ public class IPLayer extends BaseLayer {
             }
         }
         return -1;
+    }
+    int defaultEntry(byte[] address) {
+        // 테이블 내에 있는가 찾느것
+        // 나중에 들어간거 부터 서칭 함.
+        int check = 0;
+        byte[] default_entry = {0x00,0x00,0x00,0x00};
+        for (int j = 0; j < 4; j++) {
+            if (default_entry[j] != address[j]) {
+                check = 0;
+                break;
+            }
+            check =1;
+        }
+
+        return check;
     }
 
     boolean receiveIP(byte[] data) {
@@ -139,20 +155,21 @@ public class IPLayer extends BaseLayer {
         frame_dst_ip[3] = data[19];
 
 
+        byte[] frame_src_ip = new byte[4];
+
+        frame_src_ip[0] = data[12];
+        frame_src_ip[1] = data[13];
+        frame_src_ip[2] = data[14];
+        frame_src_ip[3] = data[15];
+
         // NAT 가 되어야하는 지 파악
 
-        if (data[9] == 0x11) {
-            // UDP 레이어
-            byte[] frame_src_ip = new byte[4];
-
-            frame_src_ip[0] = data[12];
-            frame_src_ip[1] = data[13];
-            frame_src_ip[2] = data[14];
-            frame_src_ip[3] = data[15];
+        if (data[9] == 0x11 || data[0] == 0x06) {
+            // transport 인 경우
 
             byte[] transportLayerData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
-            if (!((UDPLayer) this.getUpperLayer()).receiveUDP(transportLayerData, frame_src_ip, frame_dst_ip)) {
-                int i = findRoutingEntry(frame_dst_ip);
+
+            int i = findRoutingEntry(frame_dst_ip);
                 if (i != -1) {
                     if (interfaceNumber == routingTable[i].getInterface()) {
                         ((ARPLayer) this.getUnderLayer()).send(data, routingTable[i].getGateway());
@@ -163,12 +180,27 @@ public class IPLayer extends BaseLayer {
                         // 2번 라우터에서도 마찬가지고,,,
                         // 그런데, 실상은 2번만 NAT가 필요해, 이건 어떻게 해야하는 지 물어보자
                         // 일단은 1개만 연결해서 실습한다 생각하고 진행쓰 뻄
+                        if (i == 0) {
+                            // 이때가 nat가 필요한 순간 이지 않을 까 ?
+                            if( data[9] == 0x11) {
+                                if(((UDPLayer) this.upperLayer).receiveUDP(transportLayerData, frame_src_ip, frame_dst_ip) == 1){
+                                    // RIP 패킷인경우
+                                    return true;
+                                }
+                            }else{
+                                 ((TCPLayer) this.upperTCPLayer).receiveTCP(transportLayerData, frame_src_ip, frame_dst_ip);
+                            }
+                            // checksum 다시 만들기
+                            makeChecksum(transportLayerData);
 
-                        ((UDPLayer)this.upperLayer).receiveUDP(transportLayerData, frame_src_ip, frame_dst_ip);
+                            ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
+                        }else{
+                            ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(data, routingTable[i].getGateway());
+                        }
+
                     }
                     return true;
                 }
-            }
 
         } else if ( data[9]== 0x01){
             // ICMP
@@ -187,13 +219,6 @@ public class IPLayer extends BaseLayer {
             if (check == 1)
                 return true;
         }else {
-            byte[] frame_src_ip = new byte[4];
-
-            frame_src_ip[0] = data[12];
-            frame_src_ip[1] = data[13];
-            frame_src_ip[2] = data[14];
-            frame_src_ip[3] = data[15];
-
             byte[] transportLayerData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
 
             int i = findRoutingEntry(frame_dst_ip);
@@ -320,7 +345,8 @@ public class IPLayer extends BaseLayer {
 
         ip_checksum[0] = (byte) (~ip_checksum[0]);
         ip_checksum[1] = (byte) (~ip_checksum[1]);
-
+        for (int k = 0; k < data.length; k++)
+            ip_data[k + IP_HEAD_SIZE] = data[k];
         //헤더만 더해요 ㅎㅎㅎ
         return ip_checksum;
     }

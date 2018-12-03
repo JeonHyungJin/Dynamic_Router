@@ -11,7 +11,7 @@ public class RIPLayer extends BaseLayer {
     byte[] portNumber = new byte[2];
     byte[] localIP = ((ApplicationLayer)this.getUpperLayer()).tempIPAddress1; //
     byte[] globalIP = new byte[4]; //받았을때 설정하면 되는거고
-    byte[] localPort = new byte[2]; //임의
+    byte[] localPort = {0x10,0x01}; //임의
 
     RoutingTable[] routingTable;
     NATEntryTable[] NATentryTable;
@@ -329,7 +329,7 @@ public class RIPLayer extends BaseLayer {
         }
     }
 
-    public void receiveNAT(byte[] dataNAT,byte[] socketSrcIP, byte[] socketSrcPort, byte[] socketDstIP,byte[] socketDstPort){
+    public void receiveNAT(byte[] socketSrcIP, byte[] socketSrcPort, byte[] socketDstIP,byte[] socketDstPort){
         // 글로벌로 보내는 경우
         // srcip scrport routerip routerport???
         byte[] srcIP = new byte[4];
@@ -342,8 +342,6 @@ public class RIPLayer extends BaseLayer {
         byte[] srcPort = new byte[2];
         srcPort[0] = socketSrcPort[0];
         srcPort[1] = socketSrcPort[1];
-        srcPort[2] = socketSrcPort[2];
-        srcPort[3] = socketSrcPort[3];
 
         NATentryTable[entryTableIndex] = new NATEntryTable(srcIP,srcPort,localIP,localPort);
         entryTableIndex++;
@@ -355,8 +353,6 @@ public class RIPLayer extends BaseLayer {
 
         socketSrcPort[0] = localPort[0];
         socketSrcPort[1] = localPort[1];
-        socketSrcPort[2] = localPort[2];
-        socketSrcPort[3] = localPort[3];
     }
 
     public void convertToOriginal(byte[] socketDstIP, byte[] socketDstPort){
