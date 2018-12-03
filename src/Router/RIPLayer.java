@@ -9,9 +9,10 @@ public class RIPLayer extends BaseLayer {
     byte[] rip_message;
     byte[] ip_sourceIP = new byte[4];
     byte[] portNumber = new byte[2];
-    byte[] localIP = new byte[4]; //
+    byte[] localIP = ((ApplicationLayer)this.getUpperLayer()).tempIPAddress1; //
     byte[] globalIP = new byte[4]; //받았을때 설정하면 되는거고
     byte[] localPort = new byte[2]; //임의
+
     RoutingTable[] routingTable;
     NATEntryTable[] NATentryTable;
 
@@ -328,30 +329,38 @@ public class RIPLayer extends BaseLayer {
         }
     }
 
-    public void receiveNAT(byte[] dataNAT, byte[] port){
+    public void receiveNAT(byte[] dataNAT,byte[] socketSrcIP, byte[] socketSrcPort, byte[] socketDstIP,byte[] socketDstPort){
         // 글로벌로 보내는 경우
         // srcip scrport routerip routerport???
         byte[] srcIP = new byte[4];
-        srcIP[0] = dataNAT[25];
-        srcIP[1] = dataNAT[26];
-        srcIP[2] = dataNAT[27];
-        srcIP[3] = dataNAT[28];
+        srcIP[0] = socketSrcIP[0];
+        srcIP[1] = socketSrcIP[1];
+        srcIP[2] = socketSrcIP[2];
+        srcIP[3] = socketSrcIP[3];
 
         //this.getUnderLayer에서 포트넘버를 가져온다.
         byte[] srcPort = new byte[2];
+        srcPort[0] = socketSrcPort[0];
+        srcPort[1] = socketSrcPort[1];
+        srcPort[2] = socketSrcPort[2];
+        srcPort[3] = socketSrcPort[3];
 
-        globalIP[0] = dataNAT[29];
-        globalIP[1] = dataNAT[30];
-        globalIP[2] = dataNAT[31];
-        globalIP[3] = dataNAT[32];
+        globalIP[0] = socketDstIP[0];
+        globalIP[1] = socketDstIP[1];
+        globalIP[2] = socketDstIP[2];
+        globalIP[3] = socketDstIP[3];
 
         NATentryTable[entryTableIndex] = new NATEntryTable(srcIP,srcPort,localIP,localPort);
         entryTableIndex++;
+    }
 
-        //TCP로 보낸다.
-        //((TCPLayer) this.getUnderLayer()).send
-        // 글로벌에서 들어오는 경우
-
+    public void convertToOriginal(byte[] socketDstIP, byte[] socketDstPort){
+        for(int i = 0; i< NATentryTable.length; i++){
+            if(NATentryTable[i].getET_new_IP() == socketDstIP && NATentryTable[i].getET_new_port() == socketDstPort){
+                socketDstIP = NATentryTable[i].getET_new_IP();
+                socketDstPort = NATentryTable[i].getET_new_port();
+            }
+        }
     }
 
     public void runTimers(){

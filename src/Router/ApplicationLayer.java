@@ -103,7 +103,8 @@ public class ApplicationLayer extends JFrame {
    
    static byte[][] ARPCacheTable = new byte[255][11];
 
-
+    byte[] tempIPAddress1;
+    byte[] tempIPAddress2;
    public static void main(String[] args)
    {
 	   /* interface별 레이어 객체 생성  */
@@ -434,8 +435,8 @@ public class ApplicationLayer extends JFrame {
 
          byte[] tempSourceAddress = new byte[6];
          byte[] tempSourceAddress2 = new byte[6];
-         byte[] tempIPAddress1 = new byte[4];
-         byte[] tempIPAddress2 = new byte[4];
+         tempIPAddress1 = new byte[4];
+         tempIPAddress2 = new byte[4];
 
          if (e.getSource() == myAddressSet_btn) { // 1번 Interface 준비 버튼 클릭시
         	if(Mac_address.getText().length() == 0){ // MAC 주소 입력 확인
