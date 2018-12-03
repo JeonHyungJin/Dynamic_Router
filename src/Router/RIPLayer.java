@@ -357,13 +357,36 @@ public class RIPLayer extends BaseLayer {
 
     public void convertToOriginal(byte[] socketDstIP, byte[] socketDstPort){
         for(int i = 0; i< NATentryTable.length; i++){
-            if(NATentryTable[i].getET_new_IP() == socketDstIP && NATentryTable[i].getET_new_port() == socketDstPort){
-                socketDstIP = NATentryTable[i].getET_src_IP();
-                socketDstPort = NATentryTable[i].getET_src_port();
+            if(compareAddress(NATentryTable[i].getET_new_IP(),socketDstIP) && comparePort(NATentryTable[i].getET_new_port(),socketDstPort)){
+                socketDstIP[0] = NATentryTable[i].getET_src_IP()[0];
+                socketDstIP[1] = NATentryTable[i].getET_src_IP()[1];
+                socketDstIP[2] = NATentryTable[i].getET_src_IP()[2];
+                socketDstIP[3] = NATentryTable[i].getET_src_IP()[3];
+                socketDstPort[0] = NATentryTable[i].getET_src_port()[0];
+                socketDstPort[1] = NATentryTable[i].getET_src_port()[1];
             }
         }
     }
-
+    public boolean compareAddress(byte[] firstIP, byte[] secondIP){
+        if(firstIP[0] == secondIP[0]){
+            if(firstIP[1] == secondIP[1]){
+                if(firstIP[2] == secondIP[2]){
+                    if(firstIP[3] == secondIP[3]){
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    public boolean comparePort(byte[] firstPort, byte[] secondPort){
+        if(firstPort[0] == secondPort[0]){
+            if(firstPort[1] == secondPort[1]){
+                return true;
+            }
+        }
+        return false;
+    }
     public void runTimers(){
         Timer timer = new Timer();
         TimerTask periodic_timer = new TimerTask() {
