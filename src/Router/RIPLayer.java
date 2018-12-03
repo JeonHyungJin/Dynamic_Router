@@ -9,9 +9,9 @@ public class RIPLayer extends BaseLayer {
     byte[] rip_message;
     byte[] ip_sourceIP = new byte[4];
     byte[] portNumber = new byte[2];
-    byte[] localIP = new byte[4];
-    byte[] globalIP = new byte[4];
-    byte[] localPort = new byte[2];
+    byte[] localIP = new byte[4]; //
+    byte[] globalIP = new byte[4]; //받았을때 설정하면 되는거고
+    byte[] localPort = new byte[2]; //임의
     RoutingTable[] routingTable;
     NATEntryTable[] NATentryTable;
 
@@ -348,7 +348,8 @@ public class RIPLayer extends BaseLayer {
         NATentryTable[entryTableIndex] = new NATEntryTable(srcIP,srcPort,localIP,localPort);
         entryTableIndex++;
 
-
+        //TCP로 보낸다.
+        //((TCPLayer) this.getUnderLayer()).send
         // 글로벌에서 들어오는 경우
 
     }
