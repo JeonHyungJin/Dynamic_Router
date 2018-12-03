@@ -345,20 +345,25 @@ public class RIPLayer extends BaseLayer {
         srcPort[2] = socketSrcPort[2];
         srcPort[3] = socketSrcPort[3];
 
-        globalIP[0] = socketDstIP[0];
-        globalIP[1] = socketDstIP[1];
-        globalIP[2] = socketDstIP[2];
-        globalIP[3] = socketDstIP[3];
-
         NATentryTable[entryTableIndex] = new NATEntryTable(srcIP,srcPort,localIP,localPort);
         entryTableIndex++;
+
+        socketSrcIP[0] = localIP[0];
+        socketSrcIP[1] = localIP[1];
+        socketSrcIP[2] = localIP[2];
+        socketSrcIP[3] = localIP[3];
+
+        socketSrcPort[0] = localPort[0];
+        socketSrcPort[1] = localPort[1];
+        socketSrcPort[2] = localPort[2];
+        socketSrcPort[3] = localPort[3];
     }
 
     public void convertToOriginal(byte[] socketDstIP, byte[] socketDstPort){
         for(int i = 0; i< NATentryTable.length; i++){
             if(NATentryTable[i].getET_new_IP() == socketDstIP && NATentryTable[i].getET_new_port() == socketDstPort){
-                socketDstIP = NATentryTable[i].getET_new_IP();
-                socketDstPort = NATentryTable[i].getET_new_port();
+                socketDstIP = NATentryTable[i].getET_src_IP();
+                socketDstPort = NATentryTable[i].getET_src_port();
             }
         }
     }
