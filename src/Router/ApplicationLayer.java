@@ -60,6 +60,8 @@ public class ApplicationLayer extends JFrame {
    static List ARPCachelist;
    static List Proxylist;
    static List StaticRoutingList;
+   static List NATList;
+   static List ICMPList;
    
    private JTextField ProxyARPDevice;
    private JTextField ProxyARPIP;
@@ -81,6 +83,7 @@ public class ApplicationLayer extends JFrame {
    static ARPLayer m_ARPLayer_1;
    static IPLayer m_IPLayer_1;
    static UDPLayer m_UDPLayer_1;
+   static TCPLayer m_TCPLayer_1;
    static RIPLayer m_RIPLayer_1;
    static ApplicationLayer m_ApplicationLayer;
 
@@ -89,9 +92,12 @@ public class ApplicationLayer extends JFrame {
    static ARPLayer m_ARPLayer_2;
    static IPLayer m_IPLayer_2;
     static UDPLayer m_UDPLayer_2;
+    static TCPLayer m_TCPLayer_2;
     static RIPLayer m_RIPLayer_2;
     static RoutingTable[] routingTable;
+    static NATEntryTable[] natTable;
    static int routingIndex;
+   static int natIndex;
    
    int adapterNumber = 0;
    int adapterNumber2 = 0;
@@ -113,6 +119,7 @@ public class ApplicationLayer extends JFrame {
       m_ARPLayer_1 = new ARPLayer("ARPLayer_1");
       m_IPLayer_1 = new IPLayer("CIPLayer_1");
        m_UDPLayer_1 = new UDPLayer("CUDPLayer_1");
+       m_TCPLayer_1 = new TCPLayer("CTCPLayer_1");
        m_RIPLayer_1 = new RIPLayer("CRIPLayer_1");
       m_ApplicationLayer = new ApplicationLayer();
 
@@ -120,6 +127,7 @@ public class ApplicationLayer extends JFrame {
       m_EthernetLayer_2 = new EthernetLayer("CEthernetLayer_2");
       m_ARPLayer_2 = new ARPLayer("ARPLayer_2");
       m_IPLayer_2 = new IPLayer("CIPLayer_2");
+      m_TCPLayer_2 = new TCPLayer("CTCPLayer_2");
        m_UDPLayer_2 = new UDPLayer("CUDPLayer_2");
        m_RIPLayer_2 = new RIPLayer("CRIPLayer_2");
       
@@ -134,8 +142,11 @@ public class ApplicationLayer extends JFrame {
       m_ARPLayer_1.setUpperLayer(m_IPLayer_1);
       m_IPLayer_1.setUnderLayer(m_ARPLayer_1);
       m_IPLayer_1.setUpperLayer(m_UDPLayer_1);
+      m_IPLayer_1.setUpperTCPLayer(m_TCPLayer_1);
       m_UDPLayer_1.setUnderLayer(m_IPLayer_1);
       m_UDPLayer_1.setUpperLayer(m_RIPLayer_1);
+      m_TCPLayer_1.setUnderLayer(m_IPLayer_1);
+      m_TCPLayer_1.setUpperLayer(m_RIPLayer_1);
       m_RIPLayer_1.setUnderLayer(m_UDPLayer_1);
       m_RIPLayer_1.setUpperLayer(m_ApplicationLayer);
 
@@ -146,14 +157,20 @@ public class ApplicationLayer extends JFrame {
       m_ARPLayer_2.setUpperLayer(m_IPLayer_2);
       m_IPLayer_2.setUnderLayer(m_ARPLayer_2);
        m_IPLayer_2.setUpperLayer(m_UDPLayer_2);
+       m_IPLayer_2.setUpperTCPLayer(m_TCPLayer_2);
        m_UDPLayer_2.setUnderLayer(m_IPLayer_2);
        m_UDPLayer_2.setUpperLayer(m_RIPLayer_2);
+       m_TCPLayer_2.setUnderLayer(m_IPLayer_2);
+       m_TCPLayer_2.setUpperLayer(m_RIPLayer_2);
        m_RIPLayer_2.setUnderLayer(m_UDPLayer_2);
        m_RIPLayer_2.setUpperLayer(m_ApplicationLayer);
 
       /* routing table 공간 할당 */
 	  routingTable = new RoutingTable[20];
       routingIndex = 0;
+
+      natTable = new NATEntryTable[30];
+      natIndex = 0;
 
       /* 각 Interface별 routing 정보 저장을 위해 routing table 연결 */
       m_IPLayer_1.setRoutingTable(routingTable);
@@ -162,9 +179,13 @@ public class ApplicationLayer extends JFrame {
        m_IPLayer_2.setRoutingIndex(routingIndex);
 
        m_RIPLayer_1.setRoutingTable(routingTable);
+       m_RIPLayer_1.setNATEntryTable(natTable);
        m_RIPLayer_2.setRoutingTable(routingTable);
+       m_RIPLayer_2.setNATEntryTable(natTable);
        m_RIPLayer_1.setRoutingIndex(routingIndex);
+       m_RIPLayer_1.setNATIndex(natIndex);
        m_RIPLayer_2.setRoutingIndex(routingIndex);
+       m_RIPLayer_2.setNATIndex(natIndex);
 
        /* Routing 후 알맞은 interface에게 보내기 위해 서로 다른 IPLayer를 각각 연결 */
       m_IPLayer_1.setOtherIPLayer(m_IPLayer_2);
@@ -266,9 +287,119 @@ public class ApplicationLayer extends JFrame {
                else
                    m_RIPLayer_1.sendUnreachable(index);
            }
-
    }
 
+
+    static void icmpTableChaged(int id, int index, int interfaceNumber){
+        if (id == 0) {
+            // 새로 추가 된 경우
+            // 이 경우 index는 현재 라우팅 테이블 엔트리 개수
+            routingIndex = index;
+            m_IPLayer_1.setRoutingIndex(routingIndex);
+            m_IPLayer_2.setRoutingIndex(routingIndex);
+            m_RIPLayer_1.setRoutingIndex(routingIndex);
+            m_RIPLayer_2.setRoutingIndex(routingIndex);
+
+            StaticRoutingList.add(byte2IP(routingTable[routingIndex - 1].getDestination()) + "  "
+                    + byte2IP(routingTable[routingIndex - 1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex - 1].getGateway())
+                    + "  " + routingTable[routingIndex - 1].getFlag() + "  " + routingTable[routingIndex - 1].getInterface() + "  "
+                    + routingTable[routingIndex - 1].getMetric());
+
+        } else if (id == 1) {
+            // 엔트리 정보가 변경된 경우
+            // 바뀐 index가 넘어온다.
+            StaticRoutingList.replaceItem(byte2IP(routingTable[index].getDestination()) + "  "
+                    + byte2IP(routingTable[index].getNetMask()) + "  " + byte2IP(routingTable[index ].getGateway())
+                    + "  " + routingTable[index].getFlag() + "  " + routingTable[index].getInterface() + "  " + routingTable[index].getMetric(), index);
+        } else if (id == 2) {
+            // message를 받아서, 이미 routing table에서 삭제가 된 경우
+            // 인덱스 개수 업데이트하고,
+
+            StaticRoutingList.remove(index);
+
+            m_IPLayer_1.setRoutingIndex(routingIndex);
+            m_IPLayer_2.setRoutingIndex(routingIndex);
+            m_RIPLayer_1.setRoutingIndex(routingIndex);
+            m_RIPLayer_2.setRoutingIndex(routingIndex);
+
+        } else if (id == 3) {
+            // 만료가 되어 삭제 될 경우
+            // 만료 된 다면, routing 테이블에서 삭제해야하고, GUI 에서도 삭제해야하고
+
+            for (int j = index; j < routingIndex - 1; j++) {
+                routingTable[j] = routingTable[j + 1];
+                routingTable[j].setRT_Index(j);
+            }
+
+            routingTable[routingIndex - 1] = null;
+            routingIndex--;
+
+            StaticRoutingList.remove(index);
+
+            m_IPLayer_1.setRoutingIndex(routingIndex);
+            m_IPLayer_2.setRoutingIndex(routingIndex);
+            m_RIPLayer_1.setRoutingIndex(routingIndex);
+            m_RIPLayer_2.setRoutingIndex(routingIndex);
+
+        } else if (id == 4) {
+            StaticRoutingList.replaceItem(byte2IP(routingTable[index].getDestination()) + "  "
+                    + byte2IP(routingTable[index].getNetMask()) + "  " + byte2IP(routingTable[index].getGateway())
+                    + "  " + routingTable[index].getFlag() + "  " + routingTable[index].getInterface() + "  " + routingTable[index].getMetric(), index);
+            if (interfaceNumber == 0)
+                m_RIPLayer_2.sendUnreachable(index);
+            else
+                m_RIPLayer_1.sendUnreachable(index);
+        }
+    }
+
+    static void natTableChaged(int id, int index, int interfaceNumber){
+        if (id == 0) {
+            // 새로 추가 된 경우
+            // 이 경우 index는 현재 라우팅 테이블 엔트리 개수
+            natIndex = index;
+            m_RIPLayer_1.setNATIndex(natIndex);
+            m_RIPLayer_2.setNATIndex(natIndex);
+
+            NATList.add(byte2IP(natTable[natIndex - 1].getET_src_IP()) + "  "
+                    + byte2IP(natTable[natIndex - 1].getET_src_port()) + "  " + byte2IP(natTable[natIndex - 1].getET_new_IP())
+                    + "  " + natTable[natIndex - 1].getET_new_port());
+
+        } else if (id == 1) {
+            // 엔트리 정보가 변경된 경우
+            // 바뀐 index가 넘어온다.
+
+            NATList.remove(index);
+
+            m_RIPLayer_1.setNATIndex(natIndex);
+            m_RIPLayer_2.setNATIndex(natIndex);
+        }
+    }
+
+    /////////////// iCMP
+    static void ICMPTableChaged(int id, int index, int interfaceNumber){
+        if (id == 0) {
+            // 새로 추가 된 경우
+            // 이 경우 index는 현재 라우팅 테이블 엔트리 개수
+            natIndex = index;
+            m_RIPLayer_1.setNATIndex(natIndex);
+            m_RIPLayer_2.setNATIndex(natIndex);
+
+            NATList.add(byte2IP(natTable[natIndex - 1].getET_src_IP()) + "  "
+                    + byte2IP(natTable[natIndex - 1].getET_src_port()) + "  " + byte2IP(natTable[natIndex - 1].getET_new_IP())
+                    + "  " + natTable[natIndex - 1].getET_new_port());
+
+        } else if (id == 1) {
+            // 엔트리 정보가 변경된 경우
+            // 바뀐 index가 넘어온다.
+
+            NATList.remove(index);
+
+            m_RIPLayer_1.setNATIndex(natIndex);
+            m_RIPLayer_2.setNATIndex(natIndex);
+        }
+    }
+
+////////////////iCMP
    static class Chat_Send_Thread implements Runnable {
 
       public Chat_Send_Thread() {
@@ -746,7 +877,7 @@ public class ApplicationLayer extends JFrame {
       setTitle(
             "Dynamic Router");
       setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-      setBounds(100, 100, 735, 605);
+      setBounds(100, 100, 1400, 800);
       contentPane = new JPanel();
       contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
       setContentPane(contentPane);
@@ -970,6 +1101,103 @@ public class ApplicationLayer extends JFrame {
       Mac_address2.setColumns(10);
       Mac_address2.setBounds(205, 25, 130, 20);
       AddressPanel2.add(Mac_address2);
+
+      /////////////////////////////////NAT
+
+      JPanel NatTablePanel = new JPanel();
+      NatTablePanel.setLayout(null);
+      NatTablePanel.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"),
+               "NAT Table", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+       NatTablePanel.setBounds(900, 10, 420, 440);
+       contentPane.add(NatTablePanel);
+
+
+       JPanel NatTableeditorPanel = new JPanel();
+       NatTableeditorPanel.setLayout(null);
+       NatTableeditorPanel.setBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
+       NatTableeditorPanel.setBounds(900, 15, 400, 150);
+       NatTablePanel.add(NatTableeditorPanel);
+
+
+       NATList = new List();
+       NATList.setBounds(0, 0, 400, 150);
+       NatTableeditorPanel.add(NATList);
+
+       Label nat_1 = new Label("Source_IP");
+       nat_1.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
+       nat_1.setAlignment(Label.CENTER);
+       nat_1.setBounds(25, 200, 70, 20);
+       NatTablePanel.add(nat_1);
+
+       Label nat_2 = new Label("Source_Port");
+       nat_2.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
+       nat_2.setAlignment(Label.CENTER);
+       nat_2.setBounds(25, 230, 70, 20);
+       NatTablePanel.add(nat_2);
+
+       Label nat_3 = new Label("Destination_IP");
+       nat_3.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
+       nat_3.setAlignment(Label.CENTER);
+       nat_3.setBounds(25, 260, 70, 20);
+       NatTablePanel.add(nat_3);
+
+       Label nat_4 = new Label("Destination_Port");
+       nat_4.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
+       nat_4.setAlignment(Label.CENTER);
+       nat_4.setBounds(25, 260, 70, 20);
+       NatTablePanel.add(nat_4);
+
+       //////////////////////////////////////NAT
+
+
+
+       /////////////////////////////////ICMP
+
+       JPanel ICMPTablePanel = new JPanel();
+       ICMPTablePanel.setLayout(null);
+       ICMPTablePanel.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"),
+               "ICMP Table", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+       ICMPTablePanel.setBounds(900, 500, 420, 440);
+       contentPane.add(ICMPTablePanel);
+
+
+       JPanel ICMPTableeditorPanel = new JPanel();
+       ICMPTableeditorPanel.setLayout(null);
+       ICMPTableeditorPanel.setBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
+       ICMPTableeditorPanel.setBounds(900, 505, 400, 150);
+       ICMPTablePanel.add(ICMPTableeditorPanel);
+
+
+       ICMPList = new List();
+       ICMPList.setBounds(0, 0, 400, 150);
+       ICMPTableeditorPanel.add(ICMPList);
+
+       Label icmp_1 = new Label("Source_IP");
+       icmp_1.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
+       icmp_1.setAlignment(Label.CENTER);
+       icmp_1.setBounds(25, 200, 70, 20);
+       ICMPTablePanel.add(icmp_1);
+
+       Label icmp_2 = new Label("Source_Identifier");
+       icmp_2.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
+       icmp_2.setAlignment(Label.CENTER);
+       icmp_2.setBounds(25, 230, 70, 20);
+       ICMPTablePanel.add(icmp_2);
+
+       Label icmp_3 = new Label("Destination_IP");
+       icmp_3.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
+       icmp_3.setAlignment(Label.CENTER);
+       icmp_3.setBounds(25, 260, 70, 20);
+       ICMPTablePanel.add(icmp_3);
+
+       Label icmp_4 = new Label("Destination_Identifier");
+       icmp_4.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
+       icmp_4.setAlignment(Label.CENTER);
+       icmp_4.setBounds(25, 260, 70, 20);
+       ICMPTablePanel.add(icmp_4);
+
+       //////////////////////////////////////ICMP
+
       JPanel StaticRoutingPanel = new JPanel();
       StaticRoutingPanel.setLayout(null);
       StaticRoutingPanel.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"),

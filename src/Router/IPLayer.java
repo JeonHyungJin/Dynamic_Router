@@ -218,8 +218,8 @@ public class IPLayer extends BaseLayer {
             }
             if (check == 1)
                 return true;
+
         }else {
-            byte[] transportLayerData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
 
             int i = findRoutingEntry(frame_dst_ip);
             //서브넷 마스크와 아이피를 앤드 연산을 하고 그것이 데스티네이션과 같지않다면 체크가 0, 있으면 1 로 한다.
@@ -227,11 +227,7 @@ public class IPLayer extends BaseLayer {
                 if (interfaceNumber == routingTable[i].getInterface()) {
                     ((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
                 } else {
-                    if (data[9] == 0x06){
-                        // TCP 인 경우만
-                        ((TCPLayer)this.upperTCPLayer).receiveTCP(transportLayerData, frame_src_ip, frame_dst_ip);
-
-                    }
+                    ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
                 }
                 return true;
             } else {
@@ -317,7 +313,7 @@ public class IPLayer extends BaseLayer {
         return null;
     }
 
-    public byte[] makeChecksum(byte[] data) {
+    public byte[] makeChecksum(byte[] data ) {
         ip_checksum[0] += 0x45; //version, header_length
         ip_checksum[1] += 0x00; // TOS
         // total_length

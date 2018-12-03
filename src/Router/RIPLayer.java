@@ -30,6 +30,10 @@ public class RIPLayer extends BaseLayer {
     public void setNATEntryTable(NATEntryTable[] NATentryTable) {
         this.NATentryTable = NATentryTable;
     }
+    public void setNATIndex(int natIndex) {
+        this.entryTableIndex = natIndex;
+    }
+
     public void setInterfaceNumber(int interfaceNumber) {
         this.interfaceNumber = interfaceNumber;
     }
@@ -355,7 +359,7 @@ public class RIPLayer extends BaseLayer {
         socketSrcPort[1] = localPort[1];
     }
 
-    public void convertToOriginal(byte[] socketDstIP, byte[] socketDstPort){
+    public boolean convertToOriginal(byte[] socketDstIP, byte[] socketDstPort){
         for(int i = 0; i< NATentryTable.length; i++){
             if(compareAddress(NATentryTable[i].getET_new_IP(),socketDstIP) && comparePort(NATentryTable[i].getET_new_port(),socketDstPort)){
                 socketDstIP[0] = NATentryTable[i].getET_src_IP()[0];
@@ -364,8 +368,11 @@ public class RIPLayer extends BaseLayer {
                 socketDstIP[3] = NATentryTable[i].getET_src_IP()[3];
                 socketDstPort[0] = NATentryTable[i].getET_src_port()[0];
                 socketDstPort[1] = NATentryTable[i].getET_src_port()[1];
+                // entry 삭제
+                return true;
             }
         }
+        return false;
     }
     public boolean compareAddress(byte[] firstIP, byte[] secondIP){
         if(firstIP[0] == secondIP[0]){
