@@ -43,7 +43,7 @@ public class NATEntryTable {
     private byte[] ET_new_IP; //Destination Ip
     private byte[] ET_new_port; //destination port
 
-    public NATEntryTable(byte[] srcIP,byte[] srcPort,byte[] desIP,byte[] desPort){
+    public NATEntryTable(byte[] srcIP, byte[] srcPort, byte[] desIP, byte[] desPort){
         ET_src_IP = new byte[ET_SRC_SIZE];
         ET_new_IP = new byte[ET_DES_SIZE];
         ET_src_port = new byte[ET_PORT_SIZE];
