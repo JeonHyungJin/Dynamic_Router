@@ -10,6 +10,8 @@ public class IPLayer extends BaseLayer {
     byte[] ip_destinationIP = new byte[4];
     byte[] ip_data;
     byte[] ip_checksum = new byte[2];
+    byte[] localIP = ((ApplicationLayer)this.getUpperLayer()).tempIPAddress1;
+    byte[] localIdentifier = {0x10, 0x01};
 
     int interfaceNumber;
 
@@ -18,6 +20,7 @@ public class IPLayer extends BaseLayer {
     // 아래 upperTCPLayer를 클래스변수로 추가함.
     TCPLayer upperTCPLayer;
     IPLayer otherIPLayer;
+    ICMPLayer sideICMPLayer;
 
     RoutingTable[] routingTable;
     private int routingIndex;
@@ -183,20 +186,20 @@ public class IPLayer extends BaseLayer {
                         if (i == 0) {
                             // 이때가 nat가 필요한 순간 이지 않을 까 ?
                             if( data[9] == 0x11) {
-                                if(((UDPLayer) this.upperLayer).receiveUDP(transportLayerData, frame_src_ip, frame_dst_ip) == 1){
-                                    // RIP 패킷인경우
-                                    return true;
-                                }
-                            }else{
-                                 ((TCPLayer) this.upperTCPLayer).receiveTCP(transportLayerData, frame_src_ip, frame_dst_ip);
+                            if(((UDPLayer) this.upperLayer).receiveUDP(transportLayerData, frame_src_ip, frame_dst_ip) == 1){
+                                // RIP 패킷인경우
+                                return true;
                             }
-                            // checksum 다시 만들기
-                            makeChecksum(transportLayerData);
-
-                            ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
                         }else{
-                            ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(data, routingTable[i].getGateway());
+                            ((TCPLayer) this.upperTCPLayer).receiveTCP(transportLayerData, frame_src_ip, frame_dst_ip);
                         }
+                        // checksum 다시 만들기
+                        makeChecksum(transportLayerData);
+
+                        ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
+                    }else{
+                        ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(data, routingTable[i].getGateway());
+                    }
 
                     }
                     return true;
@@ -207,17 +210,43 @@ public class IPLayer extends BaseLayer {
             // 데이터
             System.arraycopy(data, 0, ip_data, 0, data.length);
 
-            int check = 0;
-            // routing table 확인하여 알맞은 인터페이스에 연결
-            for (int j = 0; j < 4; j++) {
-                if (ip_sourceIP[j] != frame_dst_ip[j]) {
-                    check = 0;
-                    break;
-                } else
-                    check = 1;
-            }
-            if (check == 1)
+//            int check = 0;
+//            // routing table 확인하여 알맞은 인터페이스에 연결
+//            for (int j = 0; j < 4; j++) {
+//                if (ip_sourceIP[j] != frame_dst_ip[j]) {
+//                    check = 0;
+//                    break;
+//                } else
+//                    check = 1;
+//            }
+//            if (check == 1)
+//                return true;
+
+            int i = findRoutingEntry(frame_dst_ip);
+            if (i != -1) {
+                if (interfaceNumber == routingTable[i].getInterface()) {
+                    ((ARPLayer) this.getUnderLayer()).send(data, routingTable[i].getGateway());
+                } else {
+                    // NAT 작업이 이뤄져야함.
+                    // 여기서 문제! 라우터가 2개 연결되었다면,,,
+                    // 1번 라우터에서도 서로 다른 인터페이스로 가려할때 NAT를 함..
+                    // 2번 라우터에서도 마찬가지고,,,
+                    // 그런데, 실상은 2번만 NAT가 필요해, 이건 어떻게 해야하는 지 물어보자
+                    // 일단은 1개만 연결해서 실습한다 생각하고 진행쓰 뻄
+                    if (i == 0) {
+                        // 이때가 nat가 필요한 순간 이지 않을 까 ?
+                        //checksum 다시 만들기
+                        ((ICMPLayer)this.sideICMPLayer).receiveICMP(data, frame_src_ip, frame_dst_ip);
+                        makeChecksum(data);
+
+                        ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
+                    }else{
+                        ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(data, routingTable[i].getGateway());
+                    }
+
+                }
                 return true;
+            }
 
         }else {
 
