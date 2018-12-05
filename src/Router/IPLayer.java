@@ -183,9 +183,9 @@ public class IPLayer extends BaseLayer {
                         // 2번 라우터에서도 마찬가지고,,,
                         // 그런데, 실상은 2번만 NAT가 필요해, 이건 어떻게 해야하는 지 물어보자
                         // 일단은 1개만 연결해서 실습한다 생각하고 진행쓰 뻄
-                        if (i == 0) {
+
                             // 이때가 nat가 필요한 순간 이지 않을 까 ?
-                            if( data[9] == 0x11) {
+                        if( data[9] == 0x11) {
                             if(((UDPLayer) this.upperLayer).receiveUDP(transportLayerData, frame_src_ip, frame_dst_ip) == 1){
                                 // RIP 패킷인경우
                                 return true;
@@ -197,9 +197,7 @@ public class IPLayer extends BaseLayer {
                         makeChecksum(transportLayerData);
 
                         ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
-                    }else{
-                        ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(data, routingTable[i].getGateway());
-                    }
+
 
                     }
                     return true;
@@ -233,21 +231,19 @@ public class IPLayer extends BaseLayer {
                     // 2번 라우터에서도 마찬가지고,,,
                     // 그런데, 실상은 2번만 NAT가 필요해, 이건 어떻게 해야하는 지 물어보자
                     // 일단은 1개만 연결해서 실습한다 생각하고 진행쓰 뻄
-                    if (i == 0) {
                         // 이때가 nat가 필요한 순간 이지 않을 까 ?
                         //checksum 다시 만들기
-                        ((ICMPLayer)this.sideICMPLayer).receiveICMP(data, frame_src_ip, frame_dst_ip);
-                        makeChecksum(data);
+                    if(isToIntra(frame_dst_ip))
+                        ((ICMPLayer)this.sideICMPLayer).convertToOriginal(frame_src_ip, frame_dst_ip);
+                    else{
+                        ((ICMPLayer)this.sideICMPLayer).receiveICMP(data, frame_src_ip, frame_dst_ip);                    }
 
-                        ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
-                    }else{
-                        ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(data, routingTable[i].getGateway());
+                    makeChecksum(data);
+
+                    ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
                     }
-
                 }
                 return true;
-            }
-
         }else {
 
             int i = findRoutingEntry(frame_dst_ip);
@@ -265,6 +261,14 @@ public class IPLayer extends BaseLayer {
         }
 
         return false;
+    }
+
+    private boolean isToIntra(byte[] destinationIP) {
+        for(int i=0;i<4;i++){
+            if(localIP[i] != destinationIP[i])
+                return false;
+        }
+        return true;
     }
 
     public static int byte2Int(byte[] src) {

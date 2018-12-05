@@ -37,15 +37,15 @@ public class ICMPLayer extends BaseLayer {
         data[4] = localIdentifier[0];
         data[5] = localIdentifier[1];
     }
-    public void convertToOriginal(byte[] socketDstIP, byte[] socketDstPort){
+    public void convertToOriginal(byte[] socketDstIP, byte[] socketDstIdentifier){
         for(int i = 0; i< ICMPTable.length; i++){
-            if(compareAddress(ICMPTable[i].getNew_IP(),socketDstIP) && comparePort(ICMPTable[i].getNew_identifier(),socketDstPort)){
+            if(compareAddress(ICMPTable[i].getNew_IP(),socketDstIP) && comparePort(ICMPTable[i].getNew_identifier(),socketDstIdentifier)){
                 socketDstIP[0] = ICMPTable[i].getSrc_IP()[0];
                 socketDstIP[1] = ICMPTable[i].getSrc_IP()[1];
                 socketDstIP[2] = ICMPTable[i].getSrc_IP()[2];
                 socketDstIP[3] = ICMPTable[i].getSrc_IP()[3];
-                socketDstPort[0] = ICMPTable[i].getSrc_identifier()[0];
-                socketDstPort[1] = ICMPTable[i].getSrc_identifier()[1];
+                socketDstIdentifier[0] = ICMPTable[i].getSrc_identifier()[0];
+                socketDstIdentifier[1] = ICMPTable[i].getSrc_identifier()[1];
             }
         }
     }
