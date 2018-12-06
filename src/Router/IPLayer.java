@@ -10,7 +10,7 @@ public class IPLayer extends BaseLayer {
     byte[] ip_destinationIP = new byte[4];
     byte[] ip_data;
     byte[] ip_checksum = new byte[2];
-    byte[] localIP = ((ApplicationLayer)this.getUpperLayer()).tempIPAddress1;
+    byte[] localIP;
     byte[] localIdentifier = {0x10, 0x01};
 
     int interfaceNumber;
@@ -47,7 +47,10 @@ public class IPLayer extends BaseLayer {
         for (int i = 0; i < 4; i++)
             ip_sourceIP[i] = sourceAddress[i];
     }
-
+    void setLocalIP(byte[] localIP){
+        for (int i = 0; i < 4; i++)
+            this.localIP[i] = localIP[i];
+    }
     void setDestinationIPAddress(byte[] destinationAddress) {
         for (int i = 0; i < 4; i++)
             ip_destinationIP[i] = destinationAddress[i];

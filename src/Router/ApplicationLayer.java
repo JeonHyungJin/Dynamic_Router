@@ -628,12 +628,18 @@ public class ApplicationLayer extends JFrame {
 		            	btnCClass.setEnabled(true);
 		            	ARPCasheDel_btn.setEnabled(true);
 		            	ProxyARPDevice.setEnabled(true);
-		            	ProxyARPIP.setEnabled(true);
+
 		            	ProxyARPMac.setEnabled(true);
 		            	ProxyARPAdd_btn.setEnabled(true);
 		            	ProxyARPDelete_btn.setEnabled(true);
                         m_RIPLayer_1.initialization();
                         m_RIPLayer_2.initialization();
+                        m_IPLayer_1.setLocalIP(tempIPAddress2);
+                        m_IPLayer_2.setLocalIP(tempIPAddress2);
+                        m_RIPLayer_1.setLocalIP(tempIPAddress2);
+                        m_RIPLayer_2.setLocalIP(tempIPAddress2);
+                        m_ICMPlayer_1.setLocalIP(tempIPAddress2);
+                        m_ICMPlayer_2.setLocalIP(tempIPAddress2);
 	            	}
 	            } else {
 	            	myAddressSet_btn2.setText("Set");
@@ -1055,44 +1061,18 @@ public class ApplicationLayer extends JFrame {
       NatTablePanel.setLayout(null);
       NatTablePanel.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"),
                "NAT Table", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
-       NatTablePanel.setBounds(900, 10, 420, 440);
+       NatTablePanel.setBounds(750, 10, 420, 200);
        contentPane.add(NatTablePanel);
 
-
        JPanel NatTableeditorPanel = new JPanel();
-       NatTableeditorPanel.setLayout(null);
        NatTableeditorPanel.setBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
-       NatTableeditorPanel.setBounds(900, 15, 400, 150);
+       NatTableeditorPanel.setBounds(750, 15, 400, 190);
        NatTablePanel.add(NatTableeditorPanel);
-
+       NatTableeditorPanel.setLayout(null);
 
        NATList = new List();
-       NATList.setBounds(0, 0, 400, 150);
+       NATList.setBounds(0, 0, 300, 150);
        NatTableeditorPanel.add(NATList);
-
-       Label nat_1 = new Label("Source_IP");
-       nat_1.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
-       nat_1.setAlignment(Label.CENTER);
-       nat_1.setBounds(25, 200, 70, 20);
-       NatTablePanel.add(nat_1);
-
-       Label nat_2 = new Label("Source_Port");
-       nat_2.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
-       nat_2.setAlignment(Label.CENTER);
-       nat_2.setBounds(25, 230, 70, 20);
-       NatTablePanel.add(nat_2);
-
-       Label nat_3 = new Label("Destination_IP");
-       nat_3.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
-       nat_3.setAlignment(Label.CENTER);
-       nat_3.setBounds(25, 260, 70, 20);
-       NatTablePanel.add(nat_3);
-
-       Label nat_4 = new Label("Destination_Port");
-       nat_4.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
-       nat_4.setAlignment(Label.CENTER);
-       nat_4.setBounds(25, 260, 70, 20);
-       NatTablePanel.add(nat_4);
 
        //////////////////////////////////////NAT
 
@@ -1100,48 +1080,25 @@ public class ApplicationLayer extends JFrame {
 
        /////////////////////////////////ICMP
 
-       JPanel ICMPTablePanel = new JPanel();
-       ICMPTablePanel.setLayout(null);
-       ICMPTablePanel.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"),
-               "ICMP Table", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
-       ICMPTablePanel.setBounds(900, 500, 420, 440);
-       contentPane.add(ICMPTablePanel);
-
-
-       JPanel ICMPTableeditorPanel = new JPanel();
-       ICMPTableeditorPanel.setLayout(null);
-       ICMPTableeditorPanel.setBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
-       ICMPTableeditorPanel.setBounds(900, 505, 400, 150);
-       ICMPTablePanel.add(ICMPTableeditorPanel);
-
-
-       ICMPList = new List();
-       ICMPList.setBounds(0, 0, 400, 150);
-       ICMPTableeditorPanel.add(ICMPList);
-
-       Label icmp_1 = new Label("Source_IP");
-       icmp_1.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
-       icmp_1.setAlignment(Label.CENTER);
-       icmp_1.setBounds(25, 200, 70, 20);
-       ICMPTablePanel.add(icmp_1);
-
-       Label icmp_2 = new Label("Source_Identifier");
-       icmp_2.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
-       icmp_2.setAlignment(Label.CENTER);
-       icmp_2.setBounds(25, 230, 70, 20);
-       ICMPTablePanel.add(icmp_2);
-
-       Label icmp_3 = new Label("Destination_IP");
-       icmp_3.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
-       icmp_3.setAlignment(Label.CENTER);
-       icmp_3.setBounds(25, 260, 70, 20);
-       ICMPTablePanel.add(icmp_3);
-
-       Label icmp_4 = new Label("Destination_Identifier");
-       icmp_4.setFont(new Font("맑은 고딕", Font.PLAIN, 12));
-       icmp_4.setAlignment(Label.CENTER);
-       icmp_4.setBounds(25, 260, 70, 20);
-       ICMPTablePanel.add(icmp_4);
+//
+//       JPanel ICMPTablePanel = new JPanel();
+//       ICMPTablePanel.setLayout(null);
+//       ICMPTablePanel.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"),
+//               "ICMP Table", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+//       ICMPTablePanel.setBounds(750, 250, 420, 200);
+//       contentPane.add(ICMPTablePanel);
+//
+//
+//       JPanel ICMPTableeditorPanel = new JPanel();
+//       ICMPTableeditorPanel.setLayout(null);
+//       ICMPTableeditorPanel.setBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
+//       ICMPTableeditorPanel.setBounds(750, 255, 400, 190);
+//       ICMPTablePanel.add(ICMPTableeditorPanel);
+//
+//
+//       ICMPList = new List();
+//       ICMPList.setBounds(0, 0, 400, 150);
+//       ICMPTableeditorPanel.add(ICMPList);
 
        //////////////////////////////////////ICMP
 

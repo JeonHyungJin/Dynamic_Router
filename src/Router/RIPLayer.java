@@ -9,8 +9,7 @@ public class RIPLayer extends BaseLayer {
     byte[] rip_message;
     byte[] ip_sourceIP = new byte[4];
     byte[] portNumber = new byte[2];
-    byte[] localIP = ((ApplicationLayer)this.getUpperLayer()).tempIPAddress1; //
-    byte[] globalIP = new byte[4]; //받았을때 설정하면 되는거고
+    byte[] localIP ; //
     byte[] localPort = {0x10,0x01}; //임의
 
     RoutingTable[] routingTable;
@@ -44,6 +43,10 @@ public class RIPLayer extends BaseLayer {
         super(layerName);
         routingIndex=0;
 
+    }
+    public void setLocalIP(byte[] localIP){
+        for (int i = 0; i < 4; i++)
+            this.localIP[i] = localIP[i];
     }
 
     public byte[] getIp_sourceIP() {

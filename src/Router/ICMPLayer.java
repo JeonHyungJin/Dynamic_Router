@@ -3,7 +3,7 @@ package Router;
 public class ICMPLayer extends BaseLayer {
 
 
-    byte[] localIP = ((ApplicationLayer)this.getUpperLayer()).tempIPAddress1;
+    byte[] localIP;
     byte[] localIdentifier = {0x10, 0x01};
 
     ICMPTable[] ICMPTable;
@@ -11,6 +11,11 @@ public class ICMPLayer extends BaseLayer {
 
     public ICMPLayer(String layerName) {
         super(layerName);
+    }
+
+    public void setLocalIP(byte[] localIP){
+        for (int i = 0; i < 4; i++)
+            this.localIP[i] = localIP[i];
     }
 
     public void setICMPTable(ICMPTable[] icmpTable) {
