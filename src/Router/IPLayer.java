@@ -104,6 +104,8 @@ public class IPLayer extends BaseLayer {
             ip_data[19] = routingTable[i].getGateway()[3];
             // 전송 할 data를 Ethernet frame으로 복사
 
+            for (int k = 0; k < data.length; k++)
+                ip_data[k + IP_HEAD_SIZE] = data[k];
             // 바로 센딩
             return ((ARPLayer) this.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
         }
@@ -193,10 +195,26 @@ public class IPLayer extends BaseLayer {
                         }else{
                             ((TCPLayer) this.upperTCPLayer).receiveTCP(transportLayerData, frame_src_ip, frame_dst_ip);
                         }
-                        // checksum 다시 만들기
-                        makeChecksum(transportLayerData);
 
-                        ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
+                        // 데이터 복사 & 헤더 변경된 값 수정
+
+                        for (int k = 0; k < transportLayerData.length; k++)
+                            data[k + IP_HEAD_SIZE] = transportLayerData[k];
+
+                        data[16] = frame_dst_ip[0];
+                        data[17] = frame_dst_ip[1];
+                        data[18] = frame_dst_ip[2];
+                        data[19] = frame_dst_ip[3];
+
+                        data[12] = frame_src_ip[0];
+                        data[13] = frame_dst_ip[1];
+                        data[14] = frame_dst_ip[2];
+                        data[15] = frame_dst_ip[3];
+
+                        // checksum 다시 만들기
+                        checksum(data, 20);
+
+                        ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(data, routingTable[i].getGateway());
 
 
                     }
@@ -206,19 +224,8 @@ public class IPLayer extends BaseLayer {
         } else if ( data[9]== 0x01){
             // ICMP
             // 데이터
-            System.arraycopy(data, 0, ip_data, 0, data.length);
+            byte[] icmpData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
 
-//            int check = 0;
-//            // routing table 확인하여 알맞은 인터페이스에 연결
-//            for (int j = 0; j < 4; j++) {
-//                if (ip_sourceIP[j] != frame_dst_ip[j]) {
-//                    check = 0;
-//                    break;
-//                } else
-//                    check = 1;
-//            }
-//            if (check == 1)
-//                return true;
 
             int i = findRoutingEntry(frame_dst_ip);
             if (i != -1) {
@@ -234,13 +241,29 @@ public class IPLayer extends BaseLayer {
                         // 이때가 nat가 필요한 순간 이지 않을 까 ?
                         //checksum 다시 만들기
                     if(isToIntra(frame_dst_ip))
-                        ((ICMPLayer)this.sideICMPLayer).convertToOriginal(frame_src_ip, frame_dst_ip);
+                        ((ICMPLayer)this.sideICMPLayer).convertToOriginal(icmpData, frame_src_ip, frame_dst_ip);
                     else{
-                        ((ICMPLayer)this.sideICMPLayer).receiveICMP(data, frame_src_ip, frame_dst_ip);                    }
+                        ((ICMPLayer)this.sideICMPLayer).receiveICMP(icmpData, frame_src_ip, frame_dst_ip);                    }
 
-                    makeChecksum(data);
+                    // 데이터 복사 & 헤더 변경된 값 수정
 
-                    ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(ip_data, routingTable[i].getGateway());
+                    for (int k = 0; k < icmpData.length; k++)
+                        data[k + IP_HEAD_SIZE] = icmpData[k];
+
+                    data[16] = frame_dst_ip[0];
+                    data[17] = frame_dst_ip[1];
+                    data[18] = frame_dst_ip[2];
+                    data[19] = frame_dst_ip[3];
+
+                    data[12] = frame_src_ip[0];
+                    data[13] = frame_dst_ip[1];
+                    data[14] = frame_dst_ip[2];
+                    data[15] = frame_dst_ip[3];
+
+                    // checksum 다시 만들기
+                    checksum(data, 20);
+
+                    ((ARPLayer) this.otherIPLayer.getUnderLayer()).send(data, routingTable[i].getGateway());
                     }
                 }
                 return true;
@@ -345,8 +368,27 @@ public class IPLayer extends BaseLayer {
         }
         return null;
     }
+    void checksum(byte[] buf, int length) {
+        int i = 0;
+        long sum = 0;
+        while (length > 0) {
+            sum += (buf[i++]&0xff) << 8;
+            if ((--length)==0) break;
+            sum += (buf[i++]&0xff);
+            --length;
+        }
+        sum = (~((sum & 0xFFFF)+(sum >> 16)))&0xFFFF;
+
+        buf[10] = (byte)(sum&0xFF00);
+        buf[11] = (byte)(sum&0xff);
+
+    }
+
 
     public byte[] makeChecksum(byte[] data ) {
+        ip_checksum[0] = 0x00;
+        ip_checksum[0] = 0x00;
+
         ip_checksum[0] += 0x45; //version, header_length
         ip_checksum[1] += 0x00; // TOS
         // total_length
@@ -374,8 +416,8 @@ public class IPLayer extends BaseLayer {
 
         ip_checksum[0] = (byte) (~ip_checksum[0]);
         ip_checksum[1] = (byte) (~ip_checksum[1]);
-        for (int k = 0; k < data.length; k++)
-            ip_data[k + IP_HEAD_SIZE] = data[k];
+
+
         //헤더만 더해요 ㅎㅎㅎ
         return ip_checksum;
     }
@@ -396,5 +438,9 @@ public class IPLayer extends BaseLayer {
 
         //비교한다
         return checkingChecksum[0] == dst_checksum[0] && checkingChecksum[1] == dst_checksum[1];
+    }
+
+    public void setICMPLayer(ICMPLayer m_icmPlayer_1) {
+        this.sideICMPLayer = m_icmPlayer_1;
     }
 }

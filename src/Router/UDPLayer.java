@@ -167,17 +167,36 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
                 // 여기 까지 올라온 패킷은 NAT의 기능을 누리려는 친구들
                 // 고로 이 상위인 RoutingModule ( 아직은 RIPLayer) 로 넘겨서 NAT 된 체로 넘어간다.
                 if(isToIntra(destinationIP))
-                    ((RIPLayer) this.getUpperLayer()).convertToOriginal(destinationIP, dst_port);
+                    ((RIPLayer) this.getUpperLayer()).convertToOriginal(sourceIP,destinationIP, dst_port);
                 else{
                     ((RIPLayer) this.getUpperLayer()).receiveNAT(sourceIP, src_port, destinationIP, dst_port);
                 }
+                // port 변경
+                data[2] = dst_port[0];
+                data[3] = dst_port[1];
 
-                ((IPLayer)this.underLayer).setSourceIpAddress(sourceIP);
-                ((IPLayer)this.underLayer).setDestinationIPAddress(destinationIP);
+                data[0] = src_port[0];
+                data[1] = src_port[1];
 
-                setSourcePort(src_port);
-                setDestinationPort(dst_port);
-                makeChecksum(data, sourceIP, destinationIP);
+                // 수도 헤더 만들기
+                byte[] buf = new byte[data.length + IPLayer.IP_HEAD_SIZE];
+                System.arraycopy(data, 0, buf, IPLayer.IP_HEAD_SIZE, data.length);
+                System.arraycopy(sourceIP, 0, buf, 0, sourceIP.length);
+                System.arraycopy(destinationIP, 0, buf, 4, destinationIP.length);
+                buf[8]=0x00;
+                buf[9]=0x11;
+                buf[10]=(byte)(data.length&0xff00);
+                buf[11]=(byte)(data.length&0xff);
+                buf[IPLayer.IP_HEAD_SIZE+6] = 0x00;
+                buf[IPLayer.IP_HEAD_SIZE+6] = 0x00;
+
+                long cksum = checksum(buf, IPLayer.IP_HEAD_SIZE+data.length);
+
+                data[6] = (byte)(cksum&0xff00);
+                data[7] = (byte)(cksum&0xff);
+                // checksum 다시 만들기
+               //checksum(data, sourceIP, destinationIP);
+
                 return 0;
             }
         } else {
@@ -196,14 +215,40 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         return true;
     }
 
+
+    private long checksum(byte[] buf, int length) {
+        int i = 0;
+        long sum = 0;
+        while (length > 0) {
+            sum += (buf[i++]&0xff) << 8;
+            if ((--length)==0) break;
+            sum += (buf[i++]&0xff);
+            --length;
+        }
+        sum = (~((sum & 0xFFFF)+(sum >> 16)))&0xFFFF;
+
+        return sum;
+
+    }
+
+
     boolean checkChecksum(byte[] data, byte[] sourceIP, byte[] destinationIP) {
         // 수신 시 !
-        byte[] noheaderData = new byte[data.length - UDP_HEAD_SIZE];
-        System.arraycopy(data, 8, noheaderData, 0, noheaderData.length); //짤라서
 
-        byte[] checkingChecksum = new byte[2];
-        checkingChecksum[0] = makeChecksum(noheaderData, sourceIP, destinationIP)[0];
-        checkingChecksum[1] = makeChecksum(noheaderData, sourceIP, destinationIP)[1];
+        byte[] buf = new byte[data.length + IPLayer.IP_HEAD_SIZE];
+        System.arraycopy(data, 0, buf, IPLayer.IP_HEAD_SIZE, data.length);
+        System.arraycopy(sourceIP, 0, buf, 0, sourceIP.length);
+        System.arraycopy(destinationIP, 0, buf, 4, destinationIP.length);
+        buf[8]=0x00;
+        buf[9]=0x11;
+        buf[10]=(byte)(data.length&0xff00);
+        buf[11]=(byte)(data.length&0xff);
+        buf[IPLayer.IP_HEAD_SIZE+6] = 0x00;
+        buf[IPLayer.IP_HEAD_SIZE+6] = 0x00;
+
+        long cksum = checksum(buf, IPLayer.IP_HEAD_SIZE+data.length);
+
+        byte[] checksum = {(byte)(cksum&0xff00),(byte)(cksum&0xff)};
 
         byte[] dst_checksum = new byte[2]; //오리지널과
         dst_checksum[0] = data[6];
@@ -211,7 +256,14 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         //받은 패킷에 대한 체크썸.
         // now check the checksum;
 
-        if (checkingChecksum[0] == dst_checksum[0] && checkingChecksum[1] == dst_checksum[1]) { //비교한다
+        System.out.println("Input packet's checksum");
+        System.out.printf("%04x %04x\n",dst_checksum[0], dst_checksum[1]);
+
+        System.out.println("Caculated packet's checksum");
+        System.out.printf("%04x %04x\n",checksum[0], checksum[1]);
+
+
+        if (checksum[0] == dst_checksum[0] && checksum[1] == dst_checksum[1]) { //비교한다
             return true;
         } else {
             return false;
@@ -262,7 +314,6 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         for (int i = 0; i < length; i++)
             udp_data[i + UDP_HEAD_SIZE] = data[i];
 
-        System.out.println("가즈아~~~~~~~~~");
         if (((IPLayer) this.getUnderLayer()).sendUDP(udp_data)) {
             return true;
         } else

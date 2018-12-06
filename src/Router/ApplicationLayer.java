@@ -82,6 +82,7 @@ public class ApplicationLayer extends JFrame {
    static EthernetLayer m_EthernetLayer_1;
    static ARPLayer m_ARPLayer_1;
    static IPLayer m_IPLayer_1;
+   static ICMPLayer m_ICMPlayer_1;
    static UDPLayer m_UDPLayer_1;
    static TCPLayer m_TCPLayer_1;
    static RIPLayer m_RIPLayer_1;
@@ -91,13 +92,17 @@ public class ApplicationLayer extends JFrame {
    static EthernetLayer m_EthernetLayer_2;
    static ARPLayer m_ARPLayer_2;
    static IPLayer m_IPLayer_2;
+    static ICMPLayer m_ICMPlayer_2;
     static UDPLayer m_UDPLayer_2;
     static TCPLayer m_TCPLayer_2;
     static RIPLayer m_RIPLayer_2;
     static RoutingTable[] routingTable;
     static NATEntryTable[] natTable;
+    static ICMPTable[] icmpTable;
+
    static int routingIndex;
    static int natIndex;
+   static int icmpIndex;
    
    int adapterNumber = 0;
    int adapterNumber2 = 0;
@@ -118,6 +123,7 @@ public class ApplicationLayer extends JFrame {
       m_EthernetLayer_1 = new EthernetLayer("CEthernetLayer_1");
       m_ARPLayer_1 = new ARPLayer("ARPLayer_1");
       m_IPLayer_1 = new IPLayer("CIPLayer_1");
+      m_ICMPlayer_1 = new ICMPLayer("CICMPLayer_1");
        m_UDPLayer_1 = new UDPLayer("CUDPLayer_1");
        m_TCPLayer_1 = new TCPLayer("CTCPLayer_1");
        m_RIPLayer_1 = new RIPLayer("CRIPLayer_1");
@@ -127,6 +133,7 @@ public class ApplicationLayer extends JFrame {
       m_EthernetLayer_2 = new EthernetLayer("CEthernetLayer_2");
       m_ARPLayer_2 = new ARPLayer("ARPLayer_2");
       m_IPLayer_2 = new IPLayer("CIPLayer_2");
+       m_ICMPlayer_2 = new ICMPLayer("CICMPLayer_2");
       m_TCPLayer_2 = new TCPLayer("CTCPLayer_2");
        m_UDPLayer_2 = new UDPLayer("CUDPLayer_2");
        m_RIPLayer_2 = new RIPLayer("CRIPLayer_2");
@@ -143,6 +150,9 @@ public class ApplicationLayer extends JFrame {
       m_IPLayer_1.setUnderLayer(m_ARPLayer_1);
       m_IPLayer_1.setUpperLayer(m_UDPLayer_1);
       m_IPLayer_1.setUpperTCPLayer(m_TCPLayer_1);
+      m_IPLayer_1.setICMPLayer(m_ICMPlayer_1);
+       m_ICMPlayer_1.setUnderLayer(m_IPLayer_1);
+
       m_UDPLayer_1.setUnderLayer(m_IPLayer_1);
       m_UDPLayer_1.setUpperLayer(m_RIPLayer_1);
       m_TCPLayer_1.setUnderLayer(m_IPLayer_1);
@@ -158,6 +168,9 @@ public class ApplicationLayer extends JFrame {
       m_IPLayer_2.setUnderLayer(m_ARPLayer_2);
        m_IPLayer_2.setUpperLayer(m_UDPLayer_2);
        m_IPLayer_2.setUpperTCPLayer(m_TCPLayer_2);
+       m_IPLayer_2.setICMPLayer(m_ICMPlayer_2);
+       m_ICMPlayer_2.setUnderLayer(m_IPLayer_2);
+
        m_UDPLayer_2.setUnderLayer(m_IPLayer_2);
        m_UDPLayer_2.setUpperLayer(m_RIPLayer_2);
        m_TCPLayer_2.setUnderLayer(m_IPLayer_2);
@@ -172,11 +185,17 @@ public class ApplicationLayer extends JFrame {
       natTable = new NATEntryTable[30];
       natIndex = 0;
 
+      icmpTable = new ICMPTable[30];
+      icmpIndex = 0;
+
       /* 각 Interface별 routing 정보 저장을 위해 routing table 연결 */
       m_IPLayer_1.setRoutingTable(routingTable);
       m_IPLayer_2.setRoutingTable(routingTable);
        m_IPLayer_1.setRoutingIndex(routingIndex);
        m_IPLayer_2.setRoutingIndex(routingIndex);
+
+       m_ICMPlayer_1.setICMPTable(icmpTable);
+       m_ICMPlayer_2.setICMPTable(icmpTable);
 
        m_RIPLayer_1.setRoutingTable(routingTable);
        m_RIPLayer_1.setNATEntryTable(natTable);
@@ -186,6 +205,7 @@ public class ApplicationLayer extends JFrame {
        m_RIPLayer_1.setNATIndex(natIndex);
        m_RIPLayer_2.setRoutingIndex(routingIndex);
        m_RIPLayer_2.setNATIndex(natIndex);
+
 
        /* Routing 후 알맞은 interface에게 보내기 위해 서로 다른 IPLayer를 각각 연결 */
       m_IPLayer_1.setOtherIPLayer(m_IPLayer_2);
@@ -290,78 +310,33 @@ public class ApplicationLayer extends JFrame {
    }
 
 
-    static void icmpTableChaged(int id, int index, int interfaceNumber){
+    static void icmpTableChaged(int id, int index){
         if (id == 0) {
             // 새로 추가 된 경우
             // 이 경우 index는 현재 라우팅 테이블 엔트리 개수
-            routingIndex = index;
-            m_IPLayer_1.setRoutingIndex(routingIndex);
-            m_IPLayer_2.setRoutingIndex(routingIndex);
-            m_RIPLayer_1.setRoutingIndex(routingIndex);
-            m_RIPLayer_2.setRoutingIndex(routingIndex);
+            icmpIndex = index;
 
-            StaticRoutingList.add(byte2IP(routingTable[routingIndex - 1].getDestination()) + "  "
-                    + byte2IP(routingTable[routingIndex - 1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex - 1].getGateway())
-                    + "  " + routingTable[routingIndex - 1].getFlag() + "  " + routingTable[routingIndex - 1].getInterface() + "  "
-                    + routingTable[routingIndex - 1].getMetric());
+            ICMPList.add(byte2IP(icmpTable[natIndex - 1].getSrc_IP()) + "  "
+                    + (icmpTable[natIndex - 1].getSrc_identifier()) + "  " + byte2IP(icmpTable[natIndex - 1].getNew_IP())
+                    + "  " + icmpTable[natIndex - 1].getNew_identifier());
 
         } else if (id == 1) {
             // 엔트리 정보가 변경된 경우
             // 바뀐 index가 넘어온다.
-            StaticRoutingList.replaceItem(byte2IP(routingTable[index].getDestination()) + "  "
-                    + byte2IP(routingTable[index].getNetMask()) + "  " + byte2IP(routingTable[index ].getGateway())
-                    + "  " + routingTable[index].getFlag() + "  " + routingTable[index].getInterface() + "  " + routingTable[index].getMetric(), index);
-        } else if (id == 2) {
-            // message를 받아서, 이미 routing table에서 삭제가 된 경우
-            // 인덱스 개수 업데이트하고,
 
-            StaticRoutingList.remove(index);
-
-            m_IPLayer_1.setRoutingIndex(routingIndex);
-            m_IPLayer_2.setRoutingIndex(routingIndex);
-            m_RIPLayer_1.setRoutingIndex(routingIndex);
-            m_RIPLayer_2.setRoutingIndex(routingIndex);
-
-        } else if (id == 3) {
-            // 만료가 되어 삭제 될 경우
-            // 만료 된 다면, routing 테이블에서 삭제해야하고, GUI 에서도 삭제해야하고
-
-            for (int j = index; j < routingIndex - 1; j++) {
-                routingTable[j] = routingTable[j + 1];
-                routingTable[j].setRT_Index(j);
-            }
-
-            routingTable[routingIndex - 1] = null;
-            routingIndex--;
-
-            StaticRoutingList.remove(index);
-
-            m_IPLayer_1.setRoutingIndex(routingIndex);
-            m_IPLayer_2.setRoutingIndex(routingIndex);
-            m_RIPLayer_1.setRoutingIndex(routingIndex);
-            m_RIPLayer_2.setRoutingIndex(routingIndex);
-
-        } else if (id == 4) {
-            StaticRoutingList.replaceItem(byte2IP(routingTable[index].getDestination()) + "  "
-                    + byte2IP(routingTable[index].getNetMask()) + "  " + byte2IP(routingTable[index].getGateway())
-                    + "  " + routingTable[index].getFlag() + "  " + routingTable[index].getInterface() + "  " + routingTable[index].getMetric(), index);
-            if (interfaceNumber == 0)
-                m_RIPLayer_2.sendUnreachable(index);
-            else
-                m_RIPLayer_1.sendUnreachable(index);
+            ICMPList.remove(index);
+            icmpIndex--;
         }
     }
 
-    static void natTableChaged(int id, int index, int interfaceNumber){
+    static void natTableChaged(int id, int index){
         if (id == 0) {
             // 새로 추가 된 경우
             // 이 경우 index는 현재 라우팅 테이블 엔트리 개수
             natIndex = index;
-            m_RIPLayer_1.setNATIndex(natIndex);
-            m_RIPLayer_2.setNATIndex(natIndex);
 
             NATList.add(byte2IP(natTable[natIndex - 1].getET_src_IP()) + "  "
-                    + byte2IP(natTable[natIndex - 1].getET_src_port()) + "  " + byte2IP(natTable[natIndex - 1].getET_new_IP())
+                    + (natTable[natIndex - 1].getET_src_port()) + "  " + byte2IP(natTable[natIndex - 1].getET_new_IP())
                     + "  " + natTable[natIndex - 1].getET_new_port());
 
         } else if (id == 1) {
@@ -369,37 +344,9 @@ public class ApplicationLayer extends JFrame {
             // 바뀐 index가 넘어온다.
 
             NATList.remove(index);
-
-            m_RIPLayer_1.setNATIndex(natIndex);
-            m_RIPLayer_2.setNATIndex(natIndex);
+            natIndex--;
         }
     }
-
-    /////////////// iCMP
-    static void ICMPTableChaged(int id, int index, int interfaceNumber){
-        if (id == 0) {
-            // 새로 추가 된 경우
-            // 이 경우 index는 현재 라우팅 테이블 엔트리 개수
-            natIndex = index;
-            m_RIPLayer_1.setNATIndex(natIndex);
-            m_RIPLayer_2.setNATIndex(natIndex);
-
-            NATList.add(byte2IP(natTable[natIndex - 1].getET_src_IP()) + "  "
-                    + byte2IP(natTable[natIndex - 1].getET_src_port()) + "  " + byte2IP(natTable[natIndex - 1].getET_new_IP())
-                    + "  " + natTable[natIndex - 1].getET_new_port());
-
-        } else if (id == 1) {
-            // 엔트리 정보가 변경된 경우
-            // 바뀐 index가 넘어온다.
-
-            NATList.remove(index);
-
-            m_RIPLayer_1.setNATIndex(natIndex);
-            m_RIPLayer_2.setNATIndex(natIndex);
-        }
-    }
-
-////////////////iCMP
    static class Chat_Send_Thread implements Runnable {
 
       public Chat_Send_Thread() {

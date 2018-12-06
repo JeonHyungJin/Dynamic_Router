@@ -17,7 +17,8 @@ public class RIPLayer extends BaseLayer {
     NATEntryTable[] NATentryTable;
 
     private int routingIndex;
-    private int entryTableIndex=0;
+    private int natIndex =0;
+
 
     int interfaceNumber = 0;
     RIPLayer otherRIPLayer;
@@ -30,8 +31,9 @@ public class RIPLayer extends BaseLayer {
     public void setNATEntryTable(NATEntryTable[] NATentryTable) {
         this.NATentryTable = NATentryTable;
     }
+
     public void setNATIndex(int natIndex) {
-        this.entryTableIndex = natIndex;
+        this.natIndex = natIndex;
     }
 
     public void setInterfaceNumber(int interfaceNumber) {
@@ -41,6 +43,7 @@ public class RIPLayer extends BaseLayer {
     public RIPLayer(String layerName) {
         super(layerName);
         routingIndex=0;
+
     }
 
     public byte[] getIp_sourceIP() {
@@ -347,8 +350,10 @@ public class RIPLayer extends BaseLayer {
         srcPort[0] = socketSrcPort[0];
         srcPort[1] = socketSrcPort[1];
 
-        NATentryTable[entryTableIndex] = new NATEntryTable(srcIP,srcPort,localIP,localPort);
-        entryTableIndex++;
+
+        NATentryTable[natIndex] = new NATEntryTable(srcIP,srcPort,socketDstIP,localPort);
+        natIndex++;
+        ApplicationLayer.natTableChaged(0, natIndex);
 
         socketSrcIP[0] = localIP[0];
         socketSrcIP[1] = localIP[1];
@@ -359,9 +364,9 @@ public class RIPLayer extends BaseLayer {
         socketSrcPort[1] = localPort[1];
     }
 
-    public boolean convertToOriginal(byte[] socketDstIP, byte[] socketDstPort){
-        for(int i = 0; i< NATentryTable.length; i++){
-            if(compareAddress(NATentryTable[i].getET_new_IP(),socketDstIP) && comparePort(NATentryTable[i].getET_new_port(),socketDstPort)){
+    public boolean convertToOriginal(byte[] socketSrcIp, byte[] socketDstIP, byte[] socketDstPort){
+        for(int i = 0; i< natIndex; i++){
+            if(compareAddress(NATentryTable[i].getET_new_IP(),socketSrcIp) && comparePort(NATentryTable[i].getET_new_port(),socketDstPort)){
                 socketDstIP[0] = NATentryTable[i].getET_src_IP()[0];
                 socketDstIP[1] = NATentryTable[i].getET_src_IP()[1];
                 socketDstIP[2] = NATentryTable[i].getET_src_IP()[2];
@@ -369,6 +374,8 @@ public class RIPLayer extends BaseLayer {
                 socketDstPort[0] = NATentryTable[i].getET_src_port()[0];
                 socketDstPort[1] = NATentryTable[i].getET_src_port()[1];
                 // entry 삭제
+                natIndex--;
+                ApplicationLayer.natTableChaged(1, natIndex);
                 return true;
             }
         }

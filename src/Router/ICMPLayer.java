@@ -2,14 +2,36 @@ package Router;
 
 public class ICMPLayer extends BaseLayer {
 
-    private int entryTableIndex=0;
+
     byte[] localIP = ((ApplicationLayer)this.getUpperLayer()).tempIPAddress1;
     byte[] localIdentifier = {0x10, 0x01};
 
     ICMPTable[] ICMPTable;
+    private int icmpIndex=0;
 
     public ICMPLayer(String layerName) {
         super(layerName);
+    }
+
+    public void setICMPTable(ICMPTable[] icmpTable) {
+        this.ICMPTable = icmpTable;
+    }
+
+
+    void checksum(byte[] buf, int length) {
+        int i = 0;
+        long sum = 0;
+        while (length > 0) {
+            sum += (buf[i++]&0xff) << 8;
+            if ((--length)==0) break;
+            sum += (buf[i++]&0xff);
+            --length;
+        }
+        sum = (~((sum & 0xFFFF)+(sum >> 16)))&0xFFFF;
+
+        buf[2] = (byte)(sum&0xFF00);
+        buf[3] = (byte)(sum&0xff);
+
     }
 
     public void receiveICMP(byte[] data, byte[] frame_src_ip, byte[] frame_dst_ip){
@@ -26,8 +48,9 @@ public class ICMPLayer extends BaseLayer {
         srcIdentifier[0] = data[4];
         srcIdentifier[1] = data[5];
 
-        ICMPTable[entryTableIndex] = new ICMPTable(srcIP,srcIdentifier,localIP,localIdentifier);
-        entryTableIndex++;
+        ICMPTable[icmpIndex] = new ICMPTable(srcIP,srcIdentifier,frame_dst_ip,localIdentifier);
+        icmpIndex++;
+        ApplicationLayer.icmpTableChaged(0, icmpIndex);
 
         frame_src_ip[0] = localIP[0];
         frame_src_ip[1] = localIP[1];
@@ -36,16 +59,32 @@ public class ICMPLayer extends BaseLayer {
 
         data[4] = localIdentifier[0];
         data[5] = localIdentifier[1];
+
+        // checksum
+        data[2] = 0x00;
+        data[3] = 0x00;
+
+        checksum(data, data.length);
     }
-    public void convertToOriginal(byte[] socketDstIP, byte[] socketDstIdentifier){
-        for(int i = 0; i< ICMPTable.length; i++){
-            if(compareAddress(ICMPTable[i].getNew_IP(),socketDstIP) && comparePort(ICMPTable[i].getNew_identifier(),socketDstIdentifier)){
+    public void convertToOriginal(byte[] data,byte[] socketSrcIP,byte[] socketDstIP ){
+        byte[] socketSrcIdentifier = {data[4], data[5]};
+        for(int i = 0; i< icmpIndex; i++){
+            if(compareAddress(ICMPTable[i].getNew_IP(),socketSrcIP) && comparePort(ICMPTable[i].getNew_identifier(),socketSrcIdentifier)){
                 socketDstIP[0] = ICMPTable[i].getSrc_IP()[0];
                 socketDstIP[1] = ICMPTable[i].getSrc_IP()[1];
                 socketDstIP[2] = ICMPTable[i].getSrc_IP()[2];
                 socketDstIP[3] = ICMPTable[i].getSrc_IP()[3];
-                socketDstIdentifier[0] = ICMPTable[i].getSrc_identifier()[0];
-                socketDstIdentifier[1] = ICMPTable[i].getSrc_identifier()[1];
+                data[4] = ICMPTable[i].getSrc_identifier()[0];
+                data[5] = ICMPTable[i].getSrc_identifier()[1];
+                icmpIndex--;
+                ApplicationLayer.icmpTableChaged(1, icmpIndex);
+
+                // checksum
+                data[2] = 0x00;
+                data[3] = 0x00;
+
+                checksum(data, data.length);
+
             }
         }
     }
