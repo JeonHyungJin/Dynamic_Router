@@ -179,20 +179,20 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
                 data[1] = src_port[1];
 
                 // 수도 헤더 만들기
-                byte[] buf = new byte[data.length + IPLayer.IP_HEAD_SIZE];
-                System.arraycopy(data, 0, buf, IPLayer.IP_HEAD_SIZE, data.length);
+                byte[] buf = new byte[data.length + TCPLayer.PSEUDO_HEAD_SIZE];
+                System.arraycopy(data, 0, buf, TCPLayer.PSEUDO_HEAD_SIZE, data.length);
                 System.arraycopy(sourceIP, 0, buf, 0, sourceIP.length);
                 System.arraycopy(destinationIP, 0, buf, 4, destinationIP.length);
                 buf[8]=0x00;
                 buf[9]=0x11;
-                buf[10]=(byte)(data.length&0xff00);
+                buf[10]=(byte)((data.length>>8)&0xff);
                 buf[11]=(byte)(data.length&0xff);
-                buf[IPLayer.IP_HEAD_SIZE+6] = 0x00;
-                buf[IPLayer.IP_HEAD_SIZE+6] = 0x00;
+                buf[TCPLayer.PSEUDO_HEAD_SIZE+6] = 0x00;
+                buf[TCPLayer.PSEUDO_HEAD_SIZE+7] = 0x00;
 
-                long cksum = checksum(buf, IPLayer.IP_HEAD_SIZE+data.length);
+                long cksum = checksum(buf, TCPLayer.PSEUDO_HEAD_SIZE+data.length);
 
-                data[6] = (byte)(cksum&0xff00);
+                data[6] = (byte)((cksum>>8)&0xff);
                 data[7] = (byte)(cksum&0xff);
                 // checksum 다시 만들기
                //checksum(data, sourceIP, destinationIP);
@@ -235,20 +235,21 @@ public class UDPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
     boolean checkChecksum(byte[] data, byte[] sourceIP, byte[] destinationIP) {
         // 수신 시 !
 
-        byte[] buf = new byte[data.length + IPLayer.IP_HEAD_SIZE];
-        System.arraycopy(data, 0, buf, IPLayer.IP_HEAD_SIZE, data.length);
+        byte[] buf = new byte[data.length + TCPLayer.PSEUDO_HEAD_SIZE];
+        System.arraycopy(data, 0, buf, TCPLayer.PSEUDO_HEAD_SIZE, data.length);
         System.arraycopy(sourceIP, 0, buf, 0, sourceIP.length);
         System.arraycopy(destinationIP, 0, buf, 4, destinationIP.length);
         buf[8]=0x00;
         buf[9]=0x11;
-        buf[10]=(byte)(data.length&0xff00);
+
+        buf[10]=(byte)((data.length>>8)&0xff);
         buf[11]=(byte)(data.length&0xff);
-        buf[IPLayer.IP_HEAD_SIZE+6] = 0x00;
-        buf[IPLayer.IP_HEAD_SIZE+6] = 0x00;
+        buf[TCPLayer.PSEUDO_HEAD_SIZE+6] = 0x00;
+        buf[TCPLayer.PSEUDO_HEAD_SIZE+7] = 0x00;
 
-        long cksum = checksum(buf, IPLayer.IP_HEAD_SIZE+data.length);
+        long cksum = checksum(buf, TCPLayer.PSEUDO_HEAD_SIZE+data.length);
 
-        byte[] checksum = {(byte)(cksum&0xff00),(byte)(cksum&0xff)};
+        byte[] checksum = {(byte)((cksum>>8)&0xff),(byte)(cksum&0xff)};
 
         byte[] dst_checksum = new byte[2]; //오리지널과
         dst_checksum[0] = data[6];

@@ -2,6 +2,8 @@ package Router;
 
 public class TCPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 사용하는 암호화를 이용하여 체크섬을 완료하였다.
     final static int TCP_HEAD_SIZE = 20;
+    final static int PSEUDO_HEAD_SIZE = 12;
+
 
     // TCP_HEADERB
     byte[] tcp_head = new byte[TCP_HEAD_SIZE];
@@ -50,20 +52,20 @@ public class TCPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         data[1] = src_port[1];
 
         // 수도 헤더 만들기
-        byte[] buf = new byte[data.length + IPLayer.IP_HEAD_SIZE];
-        System.arraycopy(data, 0, buf, IPLayer.IP_HEAD_SIZE, data.length);
+        byte[] buf = new byte[data.length +PSEUDO_HEAD_SIZE];
+        System.arraycopy(data, 0, buf, PSEUDO_HEAD_SIZE, data.length);
         System.arraycopy(sourceIP, 0, buf, 0, sourceIP.length);
         System.arraycopy(destinationIP, 0, buf, 4, destinationIP.length);
         buf[8]=0x00;
         buf[9]=0x06;
-        buf[10]=(byte)(data.length&0xff00);
+        buf[10]=(byte)((data.length>>8)&0xff);
         buf[11]=(byte)(data.length&0xff);
-        buf[IPLayer.IP_HEAD_SIZE+16] = 0x00;
-        buf[IPLayer.IP_HEAD_SIZE+17] = 0x00;
+        buf[PSEUDO_HEAD_SIZE+16] = 0x00;
+        buf[PSEUDO_HEAD_SIZE+17] = 0x00;
 
         long cksum = checksum(buf, IPLayer.IP_HEAD_SIZE+data.length);
 
-        data[16] = (byte)(cksum&0xff00);
+        data[16] = (byte)((cksum>>8)&0xff);
         data[17] = (byte)(cksum&0xff);
         // checksum 다시 만들기
 
@@ -106,20 +108,20 @@ public class TCPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
 
 
         // 수도 헤더 만들기
-        byte[] buf = new byte[data.length + IPLayer.IP_HEAD_SIZE];
-        System.arraycopy(data, 0, buf, IPLayer.IP_HEAD_SIZE, data.length);
+        byte[] buf = new byte[data.length + PSEUDO_HEAD_SIZE];
+        System.arraycopy(data, 0, buf, PSEUDO_HEAD_SIZE, data.length);
         System.arraycopy(sourceIP, 0, buf, 0, sourceIP.length);
         System.arraycopy(destinationIP, 0, buf, 4, destinationIP.length);
         buf[8]=0x00;
         buf[9]=0x06;
-        buf[10]=(byte)(data.length&0xff00);
+        buf[10]=(byte)((data.length>>8)&0xff);
         buf[11]=(byte)(data.length&0xff);
-        buf[IPLayer.IP_HEAD_SIZE+16] = 0x00;
-        buf[IPLayer.IP_HEAD_SIZE+17] = 0x00;
+        buf[PSEUDO_HEAD_SIZE+16] = 0x00;
+        buf[PSEUDO_HEAD_SIZE+17] = 0x00;
 
-        long cksum = checksum(buf, IPLayer.IP_HEAD_SIZE+data.length);
+        long cksum = checksum(buf, PSEUDO_HEAD_SIZE+data.length);
 
-        byte[] checksum = {(byte)(cksum&0xff00),(byte)(cksum&0xff)};
+        byte[] checksum = {(byte)((cksum>>8)&0xff),(byte)(cksum&0xff)};
 
         byte[] dst_checksum = new byte[2]; //오리지널과
         dst_checksum[0] = data[16];

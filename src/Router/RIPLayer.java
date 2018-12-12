@@ -10,7 +10,7 @@ public class RIPLayer extends BaseLayer {
     byte[] ip_sourceIP = new byte[4];
     byte[] portNumber = new byte[2];
     byte[] localIP = new byte[4];; //
-    byte[] localPort = {0x10,0x01}; //임의
+    byte[] localPort = {0x67,0x77}; //임의
 
     RoutingTable[] routingTable;
     NATEntryTable[] NATentryTable;
@@ -353,18 +353,40 @@ public class RIPLayer extends BaseLayer {
         srcPort[0] = socketSrcPort[0];
         srcPort[1] = socketSrcPort[1];
 
+        // 같은게 있으면 새로운 값이 아닌 있는 값으로
+        for( int i=0; i< natIndex ; i++){
+            if(compareAddress(NATentryTable[i].getET_src_IP(),srcIP) &&
+                    compareAddress(NATentryTable[i].getET_new_IP(), socketDstIP) &&
+                    comparePort(NATentryTable[i].getET_src_port(),srcPort)){
 
-        NATentryTable[natIndex] = new NATEntryTable(srcIP,srcPort,socketDstIP,localPort);
-        natIndex++;
-        ApplicationLayer.natTableChaged(0, natIndex);
+                socketSrcIP[0] = localIP[0];
+                socketSrcIP[1] = localIP[1];
+                socketSrcIP[2] = localIP[2];
+                socketSrcIP[3] = localIP[3];
+
+                socketSrcPort[0] = NATentryTable[i].getET_new_port()[0];
+                socketSrcPort[1] = NATentryTable[i].getET_new_port()[1];
+
+                return;
+            }
+        }
 
         socketSrcIP[0] = localIP[0];
         socketSrcIP[1] = localIP[1];
         socketSrcIP[2] = localIP[2];
         socketSrcIP[3] = localIP[3];
 
+        int port = ApplicationLayer.byte2Int(localPort);
+        port++;
+        localPort[0] = (byte)((port>>8)&0xFF);
+        localPort[1] = (byte)((port&0xFF));
+
         socketSrcPort[0] = localPort[0];
         socketSrcPort[1] = localPort[1];
+
+        NATentryTable[natIndex] = new NATEntryTable(srcIP,srcPort,socketDstIP,localPort);
+        natIndex++;
+        ApplicationLayer.natTableChaged(0, natIndex);
     }
 
     public boolean convertToOriginal(byte[] socketSrcIp, byte[] socketDstIP, byte[] socketDstPort){

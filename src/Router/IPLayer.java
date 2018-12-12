@@ -172,7 +172,7 @@ public class IPLayer extends BaseLayer {
 
         // NAT 가 되어야하는 지 파악
 
-        if (data[9] == 0x11 || data[0] == 0x06) {
+        if (data[9] == 0x11 || data[9] == 0x06) {
             // transport 인 경우
 
             byte[] transportLayerData = Arrays.copyOfRange(data, IP_HEAD_SIZE, data.length);
@@ -210,10 +210,12 @@ public class IPLayer extends BaseLayer {
                         data[19] = frame_dst_ip[3];
 
                         data[12] = frame_src_ip[0];
-                        data[13] = frame_dst_ip[1];
-                        data[14] = frame_dst_ip[2];
-                        data[15] = frame_dst_ip[3];
+                        data[13] = frame_src_ip[1];
+                        data[14] = frame_src_ip[2];
+                        data[15] = frame_src_ip[3];
 
+                        data[10] = 0x00;
+                        data[11] = 0x00;
                         // checksum 다시 만들기
                         checksum(data, 20);
 
@@ -259,10 +261,12 @@ public class IPLayer extends BaseLayer {
                     data[19] = frame_dst_ip[3];
 
                     data[12] = frame_src_ip[0];
-                    data[13] = frame_dst_ip[1];
-                    data[14] = frame_dst_ip[2];
-                    data[15] = frame_dst_ip[3];
+                    data[13] = frame_src_ip[1];
+                    data[14] = frame_src_ip[2];
+                    data[15] = frame_src_ip[3];
 
+                    data[10] = 0x00;
+                    data[11] = 0x00;
                     // checksum 다시 만들기
                     checksum(data, 20);
 
@@ -382,7 +386,7 @@ public class IPLayer extends BaseLayer {
         }
         sum = (~((sum & 0xFFFF)+(sum >> 16)))&0xFFFF;
 
-        buf[10] = (byte)(sum&0xFF00);
+        buf[10] = (byte)((sum>>8)&0xFF);
         buf[11] = (byte)(sum&0xff);
 
     }

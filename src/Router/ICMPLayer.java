@@ -35,7 +35,7 @@ public class ICMPLayer extends BaseLayer {
         }
         sum = (~((sum & 0xFFFF)+(sum >> 16)))&0xFFFF;
 
-        buf[2] = (byte)(sum&0xFF00);
+        buf[2] = (byte)((sum>>8)&0xFF);
         buf[3] = (byte)(sum&0xff);
 
     }
