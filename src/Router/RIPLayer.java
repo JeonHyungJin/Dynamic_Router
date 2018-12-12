@@ -8,9 +8,16 @@ public class RIPLayer extends BaseLayer {
     // Version은 2만 사용한다고 가정
     byte[] rip_message;
     byte[] ip_sourceIP = new byte[4];
+    byte[] portNumber = new byte[2];
+    byte[] localIP ; //
+    byte[] localPort = {0x10,0x01}; //임의
+
     RoutingTable[] routingTable;
+    NATEntryTable[] NATentryTable;
 
     private int routingIndex;
+    private int natIndex =0;
+
 
     int interfaceNumber = 0;
     RIPLayer otherRIPLayer;
@@ -20,6 +27,13 @@ public class RIPLayer extends BaseLayer {
     public void setRoutingTable(RoutingTable[] routingTable) {
         this.routingTable = routingTable;
     }
+    public void setNATEntryTable(NATEntryTable[] NATentryTable) {
+        this.NATentryTable = NATentryTable;
+    }
+
+    public void setNATIndex(int natIndex) {
+        this.natIndex = natIndex;
+    }
 
     public void setInterfaceNumber(int interfaceNumber) {
         this.interfaceNumber = interfaceNumber;
@@ -28,6 +42,11 @@ public class RIPLayer extends BaseLayer {
     public RIPLayer(String layerName) {
         super(layerName);
         routingIndex=0;
+
+    }
+    public void setLocalIP(byte[] localIP){
+        for (int i = 0; i < 4; i++)
+            this.localIP[i] = localIP[i];
     }
 
     public byte[] getIp_sourceIP() {
@@ -41,6 +60,8 @@ public class RIPLayer extends BaseLayer {
     public void setRoutingIndex(int routingIndex) {
         this.routingIndex = routingIndex;
     }
+
+    public void setPortNumber(byte[] portNumber){this.portNumber = portNumber;}
 
     public void setOtherRIPLayer(RIPLayer otherRIPLayer) {
         this.otherRIPLayer = otherRIPLayer;
@@ -77,20 +98,15 @@ public class RIPLayer extends BaseLayer {
                     // request에는 상대방이 원하는 엔트리에 대한 정보가 온다.
                     // routing table 내용을 entry로 하나씩 추가
                     int entry_count = (dataRIP.length - 4) / 20;
-
                     rip_message = new byte[4 + 20 * entry_count];
-
                     this.rip_message[0] = 0x02;
                     this.rip_message[1] = 0x02;
                     this.rip_message[2] = 0x00;
                     this.rip_message[3] = 0x00;
 
                     byte[] networkAddress = new byte[4];
-
-
                     for (int i = 0; i < entry_count; i++) {
                         System.arraycopy(dataRIP, 4 + 20 * i + 0, networkAddress, 0, networkAddress.length);
-
                         int index = findRoutingEntry(networkAddress);
 
                         if (index == -1) {
@@ -104,12 +120,10 @@ public class RIPLayer extends BaseLayer {
                             System.arraycopy(max_hop, 0, rip_message, 4 + 20 * i + 16, 4);
                         } else {
                             // expire timer 갱신
-                            byte[] metric = intToByteArray(routingTable[i].getMetric());
-                            // 아래줄에서 오류 날수도 있음.. 테스트 상황이 없어서 아직 모르지만
+                            byte[] metric = intToByteArray(routingTable[index].getMetric());
                             routingTable[index].restartExpireTimer(interfaceNumber);
-                            // 현재 나의 테이블 정보를 전달.
                             System.arraycopy(networkAddress, 0, rip_message, 4 + 20 * i + 4, 4);
-                            System.arraycopy(routingTable[i].getNetMask(), 0, rip_message, 4 + 20 * i + 8, 4);
+                            System.arraycopy(routingTable[index].getNetMask(), 0, rip_message, 4 + 20 * i + 8, 4);
                             // next h
                             System.arraycopy(ip_sourceIP, 0, rip_message, 4 + 20 * i + 12, 4);
                             System.arraycopy(metric, 0, rip_message, 4 + 20 * i + 16, 4);
@@ -119,11 +133,6 @@ public class RIPLayer extends BaseLayer {
 
                 ((UDPLayer) this.getUnderLayer()).sendRIP(rip_message);
             } else if (dataRIP[0] == 0x02) {
-                System.out.println("response");
-                // response
-                // 2. response에 대한 response
-
-
                 // 패킷 처리 알고리즘 ~, 패킷내용보면서 엔트리 추가시 게이트웨이는 gateway로
                 int length = dataRIP.length;
                 int entry_count = (length - 4) / 20;
@@ -138,7 +147,6 @@ public class RIPLayer extends BaseLayer {
                 byte[] temp_message = new byte[entry_count * 20];
                 byte[] temp_other_rip_message = new byte[entry_count * 20];
 
-                System.out.println("entry_count : " + entry_count);
                 for (int i = 0; i < entry_count; i++) {
                     // 들어온 엔트리 알고리즘에 맞춰 테이블 업데이트.
                     System.arraycopy(dataRIP, 4 + 20 * i + 4, networkAddress, 0, networkAddress.length);
@@ -148,7 +156,6 @@ public class RIPLayer extends BaseLayer {
                     metric = byteArrayToInt(metric_byte);
 
                     // 테이블 업데이트 중 ...
-
                     // metric 16인 경우 - 통신 불가, route poisoning
                     // 16인 경우 - poison reverse
                     // 변화가 생겼을 시, 즉각 전송
@@ -166,11 +173,11 @@ public class RIPLayer extends BaseLayer {
                         continue;
 
                     int index = findRoutingEntry(networkAddress);
-                    System.out.println("인덱스:" + index);
                     if (index == -1) {
                         if (metric != 16) {
                             // 추가
-                            routingTable[routingIndex] = new RoutingTable(networkAddress, netMask, nexthop, Flag.UG, interfaceNumber, routingIndex, metric + 1);
+                            routingTable[routingIndex] = new RoutingTable(networkAddress, netMask, nexthop, Flag.UG,
+                                    interfaceNumber, routingIndex, metric + 1);
                             routingIndex++;
                             ApplicationLayer.ifTableChaged(0, routingIndex, interfaceNumber);
 
@@ -182,6 +189,8 @@ public class RIPLayer extends BaseLayer {
                             // next h
                             System.arraycopy(nexthop, 0, temp_message, 20 * change_count + 12, 4);
                             System.arraycopy(max_hop, 0, temp_message, 20 * change_count + 16, 4);
+
+
                             // 그 반대에 보내는 경우
                             temp_other_rip_message[20 * change_count + 1] = 0x0002;
                             temp_other_rip_message[20 * change_count + 3] = 0x0001;
@@ -198,7 +207,6 @@ public class RIPLayer extends BaseLayer {
                     } else {
                         // expire timer 갱신
                         routingTable[index].restartExpireTimer(interfaceNumber);
-
                         int check_nextHop = 1;
                         // next_hop is the same
                         for (int j = 0; j < 4; j++) {
@@ -331,15 +339,78 @@ public class RIPLayer extends BaseLayer {
         }
     }
 
+    public void receiveNAT(byte[] socketSrcIP, byte[] socketSrcPort, byte[] socketDstIP,byte[] socketDstPort){
+        // 글로벌로 보내는 경우
+        // srcip scrport routerip routerport???
+        byte[] srcIP = new byte[4];
+        srcIP[0] = socketSrcIP[0];
+        srcIP[1] = socketSrcIP[1];
+        srcIP[2] = socketSrcIP[2];
+        srcIP[3] = socketSrcIP[3];
+
+        //this.getUnderLayer에서 포트넘버를 가져온다.
+        byte[] srcPort = new byte[2];
+        srcPort[0] = socketSrcPort[0];
+        srcPort[1] = socketSrcPort[1];
+
+
+        NATentryTable[natIndex] = new NATEntryTable(srcIP,srcPort,socketDstIP,localPort);
+        natIndex++;
+        ApplicationLayer.natTableChaged(0, natIndex);
+
+        socketSrcIP[0] = localIP[0];
+        socketSrcIP[1] = localIP[1];
+        socketSrcIP[2] = localIP[2];
+        socketSrcIP[3] = localIP[3];
+
+        socketSrcPort[0] = localPort[0];
+        socketSrcPort[1] = localPort[1];
+    }
+
+    public boolean convertToOriginal(byte[] socketSrcIp, byte[] socketDstIP, byte[] socketDstPort){
+        for(int i = 0; i< natIndex; i++){
+            if(compareAddress(NATentryTable[i].getET_new_IP(),socketSrcIp) && comparePort(NATentryTable[i].getET_new_port(),socketDstPort)){
+                socketDstIP[0] = NATentryTable[i].getET_src_IP()[0];
+                socketDstIP[1] = NATentryTable[i].getET_src_IP()[1];
+                socketDstIP[2] = NATentryTable[i].getET_src_IP()[2];
+                socketDstIP[3] = NATentryTable[i].getET_src_IP()[3];
+                socketDstPort[0] = NATentryTable[i].getET_src_port()[0];
+                socketDstPort[1] = NATentryTable[i].getET_src_port()[1];
+                // entry 삭제
+                natIndex--;
+                ApplicationLayer.natTableChaged(1, natIndex);
+                return true;
+            }
+        }
+        return false;
+    }
+    public boolean compareAddress(byte[] firstIP, byte[] secondIP){
+        if(firstIP[0] == secondIP[0]){
+            if(firstIP[1] == secondIP[1]){
+                if(firstIP[2] == secondIP[2]){
+                    if(firstIP[3] == secondIP[3]){
+                        return true;
+                    }
+                }
+            }
+        }
+        return false;
+    }
+    public boolean comparePort(byte[] firstPort, byte[] secondPort){
+        if(firstPort[0] == secondPort[0]){
+            if(firstPort[1] == secondPort[1]){
+                return true;
+            }
+        }
+        return false;
+    }
     public void runTimers(){
         Timer timer = new Timer();
         TimerTask periodic_timer = new TimerTask() {
             @Override
             public void run() {
                 //주기적으로 실행되는 부분
-                System.out.println("나 돌고있다고 interfaceNum : " + interfaceNumber);
                 byte[] timer_rip_message = new byte[ 4 + 20 * routingIndex ];
-
                 timer_rip_message[0] = 0x02;
                 timer_rip_message[1] = 0x02;
                 timer_rip_message[2] = 0x00;
@@ -352,7 +423,6 @@ public class RIPLayer extends BaseLayer {
                         byte[] metric = intToByteArray(routingTable[i].getMetric());
                         if (routingTable[i].getInterface() == interfaceNumber) {
                             // 나랑 연결된 곳으로 가야함.
-                            // hop : 16
                             System.arraycopy(routingTable[i].getGateway(), 0, timer_rip_message, 4 + 20 * i + 12, 4);
                             System.arraycopy(max_hop, 0, timer_rip_message, 4 + 20 * i + 16, 4);
                         } else {
@@ -363,17 +433,11 @@ public class RIPLayer extends BaseLayer {
                         }
                         // next h
                     }
-
                 // 전송~
                 ((UDPLayer)getUnderLayer()).sendRIP( timer_rip_message );
             }
         };
         timer.schedule(periodic_timer,30000,30000);  //sendRIP함수가 호출되면 0초후부터 run()함수 부분이 30초 마다 실행된다.
-
-        //router 들에게만
-        // hum...
-        // timer 별로 송신
-
     }
 
     public void initialization() {

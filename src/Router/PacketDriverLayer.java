@@ -77,7 +77,6 @@ public class PacketDriverLayer extends BaseLayer {
 			System.err.println(adapterObject.getErr());
 			return false;
 		}else{
-
 			System.out.println("보냄.");
 		}
 		return true;

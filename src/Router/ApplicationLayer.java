@@ -30,12 +30,10 @@ import javax.swing.SwingConstants;
 /**
  * GUI 환경 구성
  *  - 테이블 내용 추가, 버튼 리스너 코딩
- *  201402420 전형진(jhj)
  *  201302477 전철민
  *  201402343 남진우
  *  201402450 현도훈
  *  201402424 정유진
- *  201402406 이진원
  */
 
 public class ApplicationLayer extends JFrame {
@@ -62,6 +60,8 @@ public class ApplicationLayer extends JFrame {
    static List ARPCachelist;
    static List Proxylist;
    static List StaticRoutingList;
+   static List NATList;
+   static List ICMPList;
    
    private JTextField ProxyARPDevice;
    private JTextField ProxyARPIP;
@@ -82,7 +82,9 @@ public class ApplicationLayer extends JFrame {
    static EthernetLayer m_EthernetLayer_1;
    static ARPLayer m_ARPLayer_1;
    static IPLayer m_IPLayer_1;
+   static ICMPLayer m_ICMPlayer_1;
    static UDPLayer m_UDPLayer_1;
+   static TCPLayer m_TCPLayer_1;
    static RIPLayer m_RIPLayer_1;
    static ApplicationLayer m_ApplicationLayer;
 
@@ -90,10 +92,17 @@ public class ApplicationLayer extends JFrame {
    static EthernetLayer m_EthernetLayer_2;
    static ARPLayer m_ARPLayer_2;
    static IPLayer m_IPLayer_2;
+    static ICMPLayer m_ICMPlayer_2;
     static UDPLayer m_UDPLayer_2;
+    static TCPLayer m_TCPLayer_2;
     static RIPLayer m_RIPLayer_2;
     static RoutingTable[] routingTable;
+    static NATEntryTable[] natTable;
+    static ICMPTable[] icmpTable;
+
    static int routingIndex;
+   static int natIndex;
+   static int icmpIndex;
    
    int adapterNumber = 0;
    int adapterNumber2 = 0;
@@ -105,7 +114,8 @@ public class ApplicationLayer extends JFrame {
    
    static byte[][] ARPCacheTable = new byte[255][11];
 
-
+    byte[] tempIPAddress1;
+    byte[] tempIPAddress2;
    public static void main(String[] args)
    {
 	   /* interface별 레이어 객체 생성  */
@@ -113,7 +123,9 @@ public class ApplicationLayer extends JFrame {
       m_EthernetLayer_1 = new EthernetLayer("CEthernetLayer_1");
       m_ARPLayer_1 = new ARPLayer("ARPLayer_1");
       m_IPLayer_1 = new IPLayer("CIPLayer_1");
+      m_ICMPlayer_1 = new ICMPLayer("CICMPLayer_1");
        m_UDPLayer_1 = new UDPLayer("CUDPLayer_1");
+       m_TCPLayer_1 = new TCPLayer("CTCPLayer_1");
        m_RIPLayer_1 = new RIPLayer("CRIPLayer_1");
       m_ApplicationLayer = new ApplicationLayer();
 
@@ -121,6 +133,8 @@ public class ApplicationLayer extends JFrame {
       m_EthernetLayer_2 = new EthernetLayer("CEthernetLayer_2");
       m_ARPLayer_2 = new ARPLayer("ARPLayer_2");
       m_IPLayer_2 = new IPLayer("CIPLayer_2");
+       m_ICMPlayer_2 = new ICMPLayer("CICMPLayer_2");
+      m_TCPLayer_2 = new TCPLayer("CTCPLayer_2");
        m_UDPLayer_2 = new UDPLayer("CUDPLayer_2");
        m_RIPLayer_2 = new RIPLayer("CRIPLayer_2");
       
@@ -135,8 +149,14 @@ public class ApplicationLayer extends JFrame {
       m_ARPLayer_1.setUpperLayer(m_IPLayer_1);
       m_IPLayer_1.setUnderLayer(m_ARPLayer_1);
       m_IPLayer_1.setUpperLayer(m_UDPLayer_1);
+      m_IPLayer_1.setUpperTCPLayer(m_TCPLayer_1);
+      m_IPLayer_1.setICMPLayer(m_ICMPlayer_1);
+       m_ICMPlayer_1.setUnderLayer(m_IPLayer_1);
+
       m_UDPLayer_1.setUnderLayer(m_IPLayer_1);
       m_UDPLayer_1.setUpperLayer(m_RIPLayer_1);
+      m_TCPLayer_1.setUnderLayer(m_IPLayer_1);
+      m_TCPLayer_1.setUpperLayer(m_RIPLayer_1);
       m_RIPLayer_1.setUnderLayer(m_UDPLayer_1);
       m_RIPLayer_1.setUpperLayer(m_ApplicationLayer);
 
@@ -147,8 +167,14 @@ public class ApplicationLayer extends JFrame {
       m_ARPLayer_2.setUpperLayer(m_IPLayer_2);
       m_IPLayer_2.setUnderLayer(m_ARPLayer_2);
        m_IPLayer_2.setUpperLayer(m_UDPLayer_2);
+       m_IPLayer_2.setUpperTCPLayer(m_TCPLayer_2);
+       m_IPLayer_2.setICMPLayer(m_ICMPlayer_2);
+       m_ICMPlayer_2.setUnderLayer(m_IPLayer_2);
+
        m_UDPLayer_2.setUnderLayer(m_IPLayer_2);
        m_UDPLayer_2.setUpperLayer(m_RIPLayer_2);
+       m_TCPLayer_2.setUnderLayer(m_IPLayer_2);
+       m_TCPLayer_2.setUpperLayer(m_RIPLayer_2);
        m_RIPLayer_2.setUnderLayer(m_UDPLayer_2);
        m_RIPLayer_2.setUpperLayer(m_ApplicationLayer);
 
@@ -156,16 +182,30 @@ public class ApplicationLayer extends JFrame {
 	  routingTable = new RoutingTable[20];
       routingIndex = 0;
 
+      natTable = new NATEntryTable[30];
+      natIndex = 0;
+
+      icmpTable = new ICMPTable[30];
+      icmpIndex = 0;
+
       /* 각 Interface별 routing 정보 저장을 위해 routing table 연결 */
       m_IPLayer_1.setRoutingTable(routingTable);
       m_IPLayer_2.setRoutingTable(routingTable);
        m_IPLayer_1.setRoutingIndex(routingIndex);
        m_IPLayer_2.setRoutingIndex(routingIndex);
 
+       m_ICMPlayer_1.setICMPTable(icmpTable);
+       m_ICMPlayer_2.setICMPTable(icmpTable);
+
        m_RIPLayer_1.setRoutingTable(routingTable);
+       m_RIPLayer_1.setNATEntryTable(natTable);
        m_RIPLayer_2.setRoutingTable(routingTable);
+       m_RIPLayer_2.setNATEntryTable(natTable);
        m_RIPLayer_1.setRoutingIndex(routingIndex);
+       m_RIPLayer_1.setNATIndex(natIndex);
        m_RIPLayer_2.setRoutingIndex(routingIndex);
+       m_RIPLayer_2.setNATIndex(natIndex);
+
 
        /* Routing 후 알맞은 interface에게 보내기 위해 서로 다른 IPLayer를 각각 연결 */
       m_IPLayer_1.setOtherIPLayer(m_IPLayer_2);
@@ -219,7 +259,8 @@ public class ApplicationLayer extends JFrame {
 
                StaticRoutingList.add(byte2IP(routingTable[routingIndex - 1].getDestination()) + "  "
                        + byte2IP(routingTable[routingIndex - 1].getNetMask()) + "  " + byte2IP(routingTable[routingIndex - 1].getGateway())
-                       + "  " + routingTable[routingIndex - 1].getFlag() + "  " + routingTable[routingIndex - 1].getInterface() + "  " + routingTable[routingIndex - 1].getMetric());
+                       + "  " + routingTable[routingIndex - 1].getFlag() + "  " + routingTable[routingIndex - 1].getInterface() + "  "
+                       + routingTable[routingIndex - 1].getMetric());
 
            } else if (id == 1) {
                // 엔트리 정보가 변경된 경우
@@ -266,9 +307,46 @@ public class ApplicationLayer extends JFrame {
                else
                    m_RIPLayer_1.sendUnreachable(index);
            }
-
    }
 
+
+    static void icmpTableChaged(int id, int index){
+        if (id == 0) {
+            // 새로 추가 된 경우
+            // 이 경우 index는 현재 라우팅 테이블 엔트리 개수
+            icmpIndex = index;
+
+            ICMPList.add(byte2IP(icmpTable[natIndex - 1].getSrc_IP()) + "  "
+                    + (icmpTable[natIndex - 1].getSrc_identifier()) + "  " + byte2IP(icmpTable[natIndex - 1].getNew_IP())
+                    + "  " + icmpTable[natIndex - 1].getNew_identifier());
+
+        } else if (id == 1) {
+            // 엔트리 정보가 변경된 경우
+            // 바뀐 index가 넘어온다.
+
+            ICMPList.remove(index);
+            icmpIndex--;
+        }
+    }
+
+    static void natTableChaged(int id, int index){
+        if (id == 0) {
+            // 새로 추가 된 경우
+            // 이 경우 index는 현재 라우팅 테이블 엔트리 개수
+            natIndex = index;
+
+            NATList.add(byte2IP(natTable[natIndex - 1].getET_src_IP()) + "  "
+                    + (natTable[natIndex - 1].getET_src_port()) + "  " + byte2IP(natTable[natIndex - 1].getET_new_IP())
+                    + "  " + natTable[natIndex - 1].getET_new_port());
+
+        } else if (id == 1) {
+            // 엔트리 정보가 변경된 경우
+            // 바뀐 index가 넘어온다.
+
+            NATList.remove(index);
+            natIndex--;
+        }
+    }
    static class Chat_Send_Thread implements Runnable {
 
       public Chat_Send_Thread() {
@@ -435,8 +513,8 @@ public class ApplicationLayer extends JFrame {
 
          byte[] tempSourceAddress = new byte[6];
          byte[] tempSourceAddress2 = new byte[6];
-         byte[] tempIPAddress1 = new byte[4];
-         byte[] tempIPAddress2 = new byte[4];
+         tempIPAddress1 = new byte[4];
+         tempIPAddress2 = new byte[4];
 
          if (e.getSource() == myAddressSet_btn) { // 1번 Interface 준비 버튼 클릭시
         	if(Mac_address.getText().length() == 0){ // MAC 주소 입력 확인
@@ -550,12 +628,18 @@ public class ApplicationLayer extends JFrame {
 		            	btnCClass.setEnabled(true);
 		            	ARPCasheDel_btn.setEnabled(true);
 		            	ProxyARPDevice.setEnabled(true);
-		            	ProxyARPIP.setEnabled(true);
+
 		            	ProxyARPMac.setEnabled(true);
 		            	ProxyARPAdd_btn.setEnabled(true);
 		            	ProxyARPDelete_btn.setEnabled(true);
                         m_RIPLayer_1.initialization();
                         m_RIPLayer_2.initialization();
+                        m_IPLayer_1.setLocalIP(tempIPAddress2);
+                        m_IPLayer_2.setLocalIP(tempIPAddress2);
+                        m_RIPLayer_1.setLocalIP(tempIPAddress2);
+                        m_RIPLayer_2.setLocalIP(tempIPAddress2);
+                        m_ICMPlayer_1.setLocalIP(tempIPAddress2);
+                        m_ICMPlayer_2.setLocalIP(tempIPAddress2);
 	            	}
 	            } else {
 	            	myAddressSet_btn2.setText("Set");
@@ -746,7 +830,7 @@ public class ApplicationLayer extends JFrame {
       setTitle(
             "Dynamic Router");
       setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-      setBounds(100, 100, 735, 605);
+      setBounds(100, 100, 1400, 800);
       contentPane = new JPanel();
       contentPane.setBorder(new EmptyBorder(5, 5, 5, 5));
       setContentPane(contentPane);
@@ -970,10 +1054,58 @@ public class ApplicationLayer extends JFrame {
       Mac_address2.setColumns(10);
       Mac_address2.setBounds(205, 25, 130, 20);
       AddressPanel2.add(Mac_address2);
+
+      /////////////////////////////////NAT
+
+      JPanel NatTablePanel = new JPanel();
+      NatTablePanel.setLayout(null);
+      NatTablePanel.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"),
+               "NAT Table", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+       NatTablePanel.setBounds(750, 10, 420, 200);
+       contentPane.add(NatTablePanel);
+
+       JPanel NatTableeditorPanel = new JPanel();
+       NatTableeditorPanel.setBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
+       NatTableeditorPanel.setBounds(750, 15, 400, 190);
+       NatTablePanel.add(NatTableeditorPanel);
+       NatTableeditorPanel.setLayout(null);
+
+       NATList = new List();
+       NATList.setBounds(0, 0, 300, 150);
+       NatTableeditorPanel.add(NATList);
+
+       //////////////////////////////////////NAT
+
+
+
+       /////////////////////////////////ICMP
+
+//
+//       JPanel ICMPTablePanel = new JPanel();
+//       ICMPTablePanel.setLayout(null);
+//       ICMPTablePanel.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"),
+//               "ICMP Table", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+//       ICMPTablePanel.setBounds(750, 250, 420, 200);
+//       contentPane.add(ICMPTablePanel);
+//
+//
+//       JPanel ICMPTableeditorPanel = new JPanel();
+//       ICMPTableeditorPanel.setLayout(null);
+//       ICMPTableeditorPanel.setBorder(new BevelBorder(BevelBorder.LOWERED, null, null, null, null));
+//       ICMPTableeditorPanel.setBounds(750, 255, 400, 190);
+//       ICMPTablePanel.add(ICMPTableeditorPanel);
+//
+//
+//       ICMPList = new List();
+//       ICMPList.setBounds(0, 0, 400, 150);
+//       ICMPTableeditorPanel.add(ICMPList);
+
+       //////////////////////////////////////ICMP
+
       JPanel StaticRoutingPanel = new JPanel();
       StaticRoutingPanel.setLayout(null);
       StaticRoutingPanel.setBorder(new TitledBorder(UIManager.getBorder("TitledBorder.border"),
-            "Static Routing Table", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
+            "Dynamic Routing Table", TitledBorder.LEADING, TitledBorder.TOP, null, new Color(0, 0, 0)));
       StaticRoutingPanel.setBounds(10, 10, 420, 440);
       contentPane.add(StaticRoutingPanel);
 
