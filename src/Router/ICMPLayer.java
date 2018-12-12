@@ -3,7 +3,7 @@ package Router;
 public class ICMPLayer extends BaseLayer {
 
 
-    byte[] localIP;
+    byte[] localIP = new byte[4];
     byte[] localIdentifier = {0x10, 0x01};
 
     ICMPTable[] ICMPTable;
@@ -18,6 +18,7 @@ public class ICMPLayer extends BaseLayer {
             this.localIP[i] = localIP[i];
     }
 
+    public void setIcmpIndex(int icmpIndex){ this.icmpIndex = icmpIndex;}
     public void setICMPTable(ICMPTable[] icmpTable) {
         this.ICMPTable = icmpTable;
     }

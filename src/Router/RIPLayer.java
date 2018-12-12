@@ -9,7 +9,7 @@ public class RIPLayer extends BaseLayer {
     byte[] rip_message;
     byte[] ip_sourceIP = new byte[4];
     byte[] portNumber = new byte[2];
-    byte[] localIP ; //
+    byte[] localIP = new byte[4];; //
     byte[] localPort = {0x10,0x01}; //임의
 
     RoutingTable[] routingTable;

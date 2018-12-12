@@ -10,7 +10,7 @@ public class IPLayer extends BaseLayer {
     byte[] ip_destinationIP = new byte[4];
     byte[] ip_data;
     byte[] ip_checksum = new byte[2];
-    byte[] localIP;
+    byte[] localIP = new byte[4];
     byte[] localIdentifier = {0x10, 0x01};
 
     int interfaceNumber;
