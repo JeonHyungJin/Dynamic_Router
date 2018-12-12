@@ -51,7 +51,7 @@ public class ICMPTable {
 
         System.arraycopy(srcIP, 0, src_IP, 0, 4);
         System.arraycopy(desIP, 0, new_IP, 0, 4);
-        System.arraycopy(srcPort, 0, src_identifier, 0, 4);
-        System.arraycopy(desPort, 0, new_identifier, 0, 4);
+        System.arraycopy(srcPort, 0, src_identifier, 0, 2);
+        System.arraycopy(desPort, 0, new_identifier, 0, 2);
     }
 }

@@ -51,7 +51,7 @@ public class NATEntryTable {
 
         System.arraycopy(srcIP, 0, ET_src_IP, 0, 4);
         System.arraycopy(desIP, 0, ET_new_IP, 0, 4);
-        System.arraycopy(srcPort, 0, ET_src_port, 0, 4);
-        System.arraycopy(desPort, 0, ET_new_port, 0, 4);
+        System.arraycopy(srcPort, 0, ET_src_port, 0, 2);
+        System.arraycopy(desPort, 0, ET_new_port, 0, 2);
     }
 }

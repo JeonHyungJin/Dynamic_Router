@@ -63,7 +63,7 @@ public class TCPLayer extends BaseLayer { //추가구현 : 실제 CISCO에서 �
         buf[PSEUDO_HEAD_SIZE+16] = 0x00;
         buf[PSEUDO_HEAD_SIZE+17] = 0x00;
 
-        long cksum = checksum(buf, IPLayer.IP_HEAD_SIZE+data.length);
+        long cksum = checksum(buf, PSEUDO_HEAD_SIZE+data.length);
 
         data[16] = (byte)((cksum>>8)&0xff);
         data[17] = (byte)(cksum&0xff);
